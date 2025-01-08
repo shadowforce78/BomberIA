@@ -1,0 +1,92 @@
+début_tour 0
+b_mouvement 0 (2,1) (3,1)
+fin_tour
+
+début_tour 1
+b_mouvement 0 (3,1) (4,1)
+fin_tour
+
+début_tour 2
+b_mouvement 0 (4,1) (5,1)
+fin_tour
+
+début_tour 3
+b_mouvement 0 (5,1) (6,1)
+fin_tour
+
+début_tour 4
+b_mouvement 0 (6,1) (7,1)
+fin_tour
+
+début_tour 5
+b_mouvement 0 (7,1) (8,1)
+fin_tour
+
+début_tour 6
+b_mouvement 0 (8,1) (9,1)
+fin_tour
+
+début_tour 7
+b_mouvement 0 (9,1) (10,1)
+fin_tour
+
+début_tour 8
+b_mouvement 0 (10,1) (11,1)
+fin_tour
+
+début_tour 9
+b_mouvement 0 (11,1) (12,1)
+fin_tour
+
+début_tour 10
+b_mouvement 0 (12,1) (13,1)
+fin_tour
+
+début_tour 11
+b_mouvement 0 (13,1) (14,1)
+fin_tour
+
+début_tour 12
+b_mouvement 0 (14,1) (15,1)
+fin_tour
+
+début_tour 13
+b_mouvement 0 (15,1) (16,1)
+fin_tour
+
+début_tour 14
+b_mouvement 0 (16,1) (17,1)
+fin_tour
+
+début_tour 15
+fin_tour
+
+début_tour 16
+fin_tour
+
+début_tour 17
+fin_tour
+
+début_tour 18
+fin_tour
+
+début_tour 19
+fin_tour
+
+début_tour 20
+fin_tour
+
+début_tour 21
+fin_tour
+
+début_tour 22
+fin_tour
+
+début_tour 23
+fin_tour
+
+début_tour 24
+fin_tour
+
+game_over
+scores [0]

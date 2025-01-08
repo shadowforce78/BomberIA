@@ -1,0 +1,6 @@
+timerglobal 25
+timerfantome 100
+
+CCCCCCCCCCCCCCCCCCCCC
+C P               M C
+CCCCCCCCCCCCCCCCCCCCC
