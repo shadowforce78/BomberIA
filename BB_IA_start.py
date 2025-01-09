@@ -68,6 +68,6 @@ def partie(noms_des_joueurs : list[str], scenario : str):
     game.log(f"scores {game.scores}")
 
 if __name__ == '__main__':
-    partie(['IA_FIRST_TEST'], "maps/training0.txt")
+    partie(['IA_FIRST_TEST'], "maps/training3.txt")
     #partie(['IA_aleatoire','IA_aleatoire','IA_aleatoire','IA_aleatoire'], "maps/battle0.txt")
     
