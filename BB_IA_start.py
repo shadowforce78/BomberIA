@@ -64,10 +64,15 @@ def partie(noms_des_joueurs : list[str], scenario : str):
         #test game over
         game_over = game.is_game_over() 
 
+    total_score = 0
+    if type(game.scores) == list:
+        for i in range(len(game.scores)):
+            total_score += game.scores[i]
+        game.log(f"total_score {total_score}")
     game.log("game_over")
     game.log(f"scores {game.scores}")
 
 if __name__ == '__main__':
-    partie(['IA_FIRST_TEST'], "maps/training3.txt")
-    #partie(['IA_aleatoire','IA_aleatoire','IA_aleatoire','IA_aleatoire'], "maps/battle0.txt")
+    partie(['IA_FIRST_TEST'], "maps/training4.txt")
+    # partie(['IA_FIRST_TEST','IA_FIRST_TEST','IA_FIRST_TEST','IA_FIRST_TEST'], "maps/battle0.txt")
     

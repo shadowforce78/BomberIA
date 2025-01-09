@@ -24,22 +24,39 @@ class IA_Bomber:
             if bomber["num_joueur"] == self.num_joueur:
                 return bomber["position"]
         return (-1, -1)
+    
+    def evaluate_position(self, game_dict, position):
+        """Évalue la valeur d'une position"""
+        x, y = position
+        adjacent_positions = [
+            (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)
+        ]
+        value = 0
+        for adj_x, adj_y in adjacent_positions:
+            if 0 <= adj_x < self.width and 0 <= adj_y < self.height:
+                if game_dict["map"][adj_y][adj_x] == "M":  # Minerai
+                    value += 1
+        return value
+
 
     def flood_fill(
         self, game_dict: dict, start_pos: Tuple[int, int]
     ) -> Optional[List[str]]:
         """Utilise le flood fill pour trouver le chemin le plus court vers le minerai le plus proche"""
         visited = set()
-        queue = deque([(start_pos, [])])
+        queue = deque([(start_pos, [], 0)])
         map_data = game_dict["map"]
 
+        best_path = None
+        best_value = -1
+
         while queue:
-            (x, y), path = queue.popleft()
+            (x, y), path, value = queue.popleft()
 
-            if map_data[y][x] == "M":  # Minerai trouvé
-                return path
+            if map_data[y][x] == "M" and value > best_value:
+                best_path = path
+                best_value = value
 
-            # Vérifie les 4 directions
             directions = [
                 ("D", (x + 1, y)),
                 ("G", (x - 1, y)),
@@ -54,9 +71,9 @@ class IA_Bomber:
                     and map_data[new_y][new_x] not in ["C", "E"]
                 ):
                     visited.add((new_x, new_y))
-                    queue.append(((new_x, new_y), path + [direction]))
+                    queue.append(((new_x, new_y), path + [direction], value + self.evaluate_position(game_dict, (new_x, new_y))))
 
-        return None
+        return best_path
 
     def action(self, game_dict: dict) -> str:
         """Détermine l'action à effectuer"""
