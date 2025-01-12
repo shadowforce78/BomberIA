@@ -6,13 +6,16 @@
 
 import random
 
+
 class IA_Bomber:
-    def __init__(self, num_joueur : int, game_dic : dict, timerglobal : int, timerfantôme: int) -> None:
+    def __init__(
+        self, num_joueur: int, game_dic: dict, timerglobal: int, timerfantôme: int
+    ) -> None:
         """génère l'objet de la classe IA_Bomber"""
         self.num_joueur = num_joueur
         self.timerglobal = timerglobal
         self.timerfantôme = timerfantôme
-        
+
         # Analyse initiale du dictionnaire
         self.analyze_game_dict(game_dic)
 
@@ -21,7 +24,7 @@ class IA_Bomber:
         print("\nContenu du dictionnaire game_dict:")
         for key, value in game_dict.items():
             print(f"\nClé: {key}")
-            
+
             # Afficher un exemple de la valeur selon son type
             if isinstance(value, list):
                 print(f"Type: Liste de longueur {len(value)}")
@@ -31,13 +34,14 @@ class IA_Bomber:
             else:
                 print(f"Valeur: {value}")
 
-    def action(self, game_dict : dict) -> str:
+    def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
         # Pour l'instant, on analyse juste le dictionnaire à chaque tour
         self.analyze_game_dict(game_dict)
-        
+
         # Action par défaut
-        return 'N'
+        return "N"
+
 
 # Les clés attendues dans game_dict sont:
 # - 'map': la carte du jeu (liste de strings)
@@ -46,5 +50,3 @@ class IA_Bomber:
 # - 'bombes': liste des bombes
 # - 'compteur_tour': numéro du tour actuel
 # - 'scores': liste des scores des joueurs
-
-
