@@ -94,27 +94,43 @@ class JeuBomberTK:
         self.master = master
         self.master.title("BomberBUT - Interface Tkinter")
 
-        # Chargement du jeu
-        self.game = charger_scenario(scenario)
-        self.selected_ias = selected_ias
-        self.ias = self._charger_IAs()
+        # Frame principale
+        self.main_frame = tk.Frame(master)
+        self.main_frame.pack(padx=10, pady=10)
 
-        self.canvas = tk.Canvas(master, width=800, height=600, bg="white")
+        # Canvas
+        self.canvas = tk.Canvas(self.main_frame, width=800, height=600, bg="white")
         self.canvas.pack()
 
+        # Frame pour les informations
+        self.info_frame = tk.Frame(self.main_frame)
+        self.info_frame.pack(fill='x', pady=5)
+        
+        # Labels pour les scores
+        self.score_labels = []
+        for i in range(4):  # Maximum 4 joueurs
+            label = tk.Label(self.info_frame, text="", font=("Arial", 12))
+            label.grid(row=0, column=i, padx=10)
+            self.score_labels.append(label)
+
         # Boutons de contrôle
-        self.control_frame = tk.Frame(master)
-        self.control_frame.pack()
+        self.control_frame = tk.Frame(self.main_frame)
+        self.control_frame.pack(pady=5)
 
         self.btn_tour = tk.Button(
             self.control_frame, text="Jouer un Tour", command=self.jouer_tour
         )
-        self.btn_tour.grid(row=0, column=0)
+        self.btn_tour.grid(row=0, column=0, padx=5)
 
         self.btn_quit = tk.Button(
             self.control_frame, text="Quitter", command=master.quit
         )
-        self.btn_quit.grid(row=0, column=1)
+        self.btn_quit.grid(row=0, column=1, padx=5)
+
+        # Chargement du jeu
+        self.game = charger_scenario(scenario)
+        self.selected_ias = selected_ias
+        self.ias = self._charger_IAs()
 
         # Démarrage de l'affichage
         self.afficher_carte()
@@ -198,14 +214,21 @@ class JeuBomberTK:
                             fill="white", font=("Arial", 10, "bold")
                         )
 
-        # Afficher les scores en haut du canvas
+        # Mettre à jour les labels de score au lieu de dessiner sur le canvas
         for i, bomber in enumerate(self.game.bombers):
-            score_text = f"J{i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
-            self.canvas.create_text(
-                100 + i * 200, 20,
+            score_text = f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
+            self.score_labels[i].config(
                 text=score_text,
-                fill="black",
-                font=("Arial", 12, "bold")
+                fg=["red", "blue", "green", "yellow"][i % 4]
+            )
+
+        # Si game over, afficher au centre
+        if self.game.is_game_over():
+            self.canvas.create_text(
+                400, 300,
+                text="Partie Terminée",
+                font=("Arial", 24),
+                fill="red"
             )
 
     def jouer_tour(self):

@@ -186,7 +186,18 @@ class IA_Bomber:
         self.compte_recul = getattr(self, 'compte_recul', 0)
         self.direction_recul = getattr(self, 'direction_recul', None)
         self.derniere_bombe = getattr(self, 'derniere_bombe', None)
-        self.cible = getattr(self, 'cible', None)
+        
+        # Réinitialisation des états après explosion de bombe
+        if self.derniere_bombe:
+            bombe_existe = False
+            for bombe in game_dict["bombes"]:
+                if bombe["position"] == self.derniere_bombe:
+                    bombe_existe = True
+                    break
+            if not bombe_existe:  # La bombe a explosé
+                self.derniere_bombe = None
+                self.compte_recul = 0
+                self.direction_recul = None
         
         # Si on est en train de reculer après avoir posé une bombe
         if self.compte_recul > 0:
@@ -223,7 +234,7 @@ class IA_Bomber:
                 
             # Poser la bombe et commencer le recul
             self.derniere_bombe = bomber_pos
-            self.compte_recul = 5  # Augmenté à 5 pour plus de sécurité
+            self.compte_recul = 3  # Augmenté à 5 pour plus de sécurité
             return "X"
             
         # Se déplacer vers le minerai seulement si on est en sécurité
