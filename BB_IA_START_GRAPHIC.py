@@ -127,6 +127,18 @@ class JeuBomberTK:
         )
         self.btn_quit.grid(row=0, column=1, padx=5)
 
+        # Ajout d'une variable pour tracker l'état du défilement automatique
+        self.auto_play = False
+        self.auto_play_speed = 500  # 500ms = 2 tours par seconde
+        
+        # Ajout du bouton de défilement automatique dans control_frame
+        self.btn_auto = tk.Button(
+            self.control_frame, 
+            text="Défilement Auto", 
+            command=self.toggle_auto_play
+        )
+        self.btn_auto.grid(row=0, column=2, padx=5)
+
         # Chargement du jeu
         self.game = charger_scenario(scenario)
         self.selected_ias = selected_ias
@@ -251,6 +263,21 @@ class JeuBomberTK:
             self.canvas.create_text(
                 400, 300, text="Partie Terminée", font=("Arial", 24), fill="red"
             )
+
+    def toggle_auto_play(self):
+        """Active ou désactive le défilement automatique"""
+        self.auto_play = not self.auto_play
+        if self.auto_play:
+            self.btn_auto.config(text="Arrêter Auto")
+            self.jouer_tour_auto()
+        else:
+            self.btn_auto.config(text="Défilement Auto")
+
+    def jouer_tour_auto(self):
+        """Joue un tour automatiquement si auto_play est activé"""
+        if self.auto_play and not self.game.is_game_over():
+            self.jouer_tour()
+            self.master.after(self.auto_play_speed, self.jouer_tour_auto)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ import logging
 
 # Configuration du logger
 logging.basicConfig(filename='ia_bomber.log', level=logging.DEBUG, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(levellevelname)s - %(message)s')
 
 class IA_Bomber:
     def __init__(
@@ -95,15 +95,36 @@ class IA_Bomber:
         minerais.sort(key=lambda x: x[1])
         return minerais[:10]
 
-    def get_direction_to_target(self, current_pos: tuple[int, int], target_pos: tuple[int, int]) -> str:
-        """Détermine la direction à prendre pour aller vers la cible"""
+    def get_direction_to_target(self, current_pos: tuple[int, int], target_pos: tuple[int, int], game_dict: dict) -> str:
+        """Détermine la direction à prendre pour aller vers la cible en tenant compte des obstacles"""
         dx = target_pos[0] - current_pos[0]
         dy = target_pos[1] - current_pos[1]
         
+        # Si on est plus loin horizontalement et qu'on peut bouger horizontalement
         if abs(dx) > abs(dy):
-            return "D" if dx > 0 else "G"
+            # Essayer d'abord horizontalement
+            if dx > 0 and game_dict["map"][current_pos[1]][current_pos[0] + 1] != "C":
+                return "D"
+            elif dx < 0 and game_dict["map"][current_pos[1]][current_pos[0] - 1] != "C":
+                return "G"
+            # Si bloqué horizontalement, essayer verticalement
+            elif dy > 0 and game_dict["map"][current_pos[1] + 1][current_pos[0]] != "C":
+                return "B"
+            elif dy < 0 and game_dict["map"][current_pos[1] - 1][current_pos[0]] != "C":
+                return "H"
         else:
-            return "B" if dy > 0 else "H"
+            # Essayer d'abord verticalement
+            if dy > 0 and game_dict["map"][current_pos[1] + 1][current_pos[0]] != "C":
+                return "B"
+            elif dy < 0 and game_dict["map"][current_pos[1] - 1][current_pos[0]] != "C":
+                return "H"
+            # Si bloqué verticalement, essayer horizontalement
+            elif dx > 0 and game_dict["map"][current_pos[1]][current_pos[0] + 1] != "C":
+                return "D"
+            elif dx < 0 and game_dict["map"][current_pos[1]][current_pos[0] - 1] != "C":
+                return "G"
+                
+        return "N"  # Si aucun mouvement n'est possible
 
     def is_safe_position(self, pos: tuple[int, int], bombes: list[dict]) -> bool:
         """Vérifie si une position est sûre par rapport aux bombes"""
@@ -166,6 +187,39 @@ class IA_Bomber:
                 
         return best_minerai, best_score
 
+    def get_safe_direction(self, pos: tuple[int, int], bombes: list[dict], carte: list[list[str]]) -> str:
+        """Trouve une direction sûre pour s'échapper"""
+        # Liste des directions possibles
+        directions = {"H": (0, -1), "B": (0, 1), "G": (-1, 0), "D": (1, 0)}
+        best_direction = "N"
+        best_safety = -1
+
+        for direction, (dx, dy) in directions.items():
+            new_x, new_y = pos[0] + dx, pos[1] + dy
+            
+            # Vérifier les limites et les murs
+            if not (0 <= new_x < len(carte[0]) and 0 <= new_y < len(carte)):
+                continue
+            if carte[new_y][new_x] == "C":
+                continue
+                
+            # Calculer un score de sécurité
+            safety = 0
+            for bombe in bombes:
+                bombe_pos = bombe["position"]
+                # Si nouvelle position pas alignée avec la bombe
+                if new_x != bombe_pos[0] and new_y != bombe_pos[1]:
+                    safety += 2
+                # Si plus loin de la bombe qu'avant
+                elif abs(new_x - bombe_pos[0]) + abs(new_y - bombe_pos[1]) > abs(pos[0] - bombe_pos[0]) + abs(pos[1] - bombe_pos[1]):
+                    safety += 1
+            
+            if safety > best_safety:
+                best_safety = safety
+                best_direction = direction
+                
+        return best_direction
+
     def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
         minerais_proches = self.flood_fill(game_dict)
@@ -186,7 +240,15 @@ class IA_Bomber:
         self.compte_recul = getattr(self, 'compte_recul', 0)
         self.direction_recul = getattr(self, 'direction_recul', None)
         self.derniere_bombe = getattr(self, 'derniere_bombe', None)
-        
+
+        # Si en danger à cause d'une bombe
+        if game_dict["bombes"]:
+            for bombe in game_dict["bombes"]:
+                if not self.get_safe_distance(bombe["position"], bomber_pos):
+                    safe_dir = self.get_safe_direction(bomber_pos, game_dict["bombes"], game_dict["map"])
+                    if safe_dir != "N":
+                        return safe_dir
+
         # Réinitialisation des états après explosion de bombe
         if self.derniere_bombe:
             bombe_existe = False
@@ -237,9 +299,23 @@ class IA_Bomber:
             self.compte_recul = 3  # Augmenté à 5 pour plus de sécurité
             return "X"
             
+        # Éviter les mouvements répétitifs
+        if hasattr(self, 'derniere_position') and hasattr(self, 'position_counter'):
+            if self.derniere_position == bomber_pos:
+                self.position_counter += 1
+                if self.position_counter >= 3:  # Si bloqué au même endroit pendant 3 tours
+                    self.position_counter = 0
+                    return random.choice(["H", "B", "G", "D"])  # Mouvement aléatoire pour se débloquer
+            else:
+                self.position_counter = 0
+        else:
+            self.position_counter = 0
+            
+        self.derniere_position = bomber_pos
+
         # Se déplacer vers le minerai seulement si on est en sécurité
         if not self.derniere_bombe or self.get_safe_distance(self.derniere_bombe, bomber_pos):
-            direction = self.get_direction_to_target(bomber_pos, minerai_proche)
+            direction = self.get_direction_to_target(bomber_pos, minerai_proche, game_dict)
             self.derniere_action = direction
             return direction
             
