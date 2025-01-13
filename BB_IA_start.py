@@ -52,11 +52,12 @@ def partie(noms_des_joueurs : list[str], scenario : str):
         game.log("début_tour " + str(game.compteur_tour))        
         #phase joueurs
         for j in range(nb_joueurs):
-            original_stdout = sys.stdout
-            sys.stdout = open(os.devnull, 'w')
-            action = IAs[j].action(game.to_dict())
-            sys.stdout = original_stdout
-            game.résoudre_action(j,action)
+            if game.bombers[j].pv >0:
+                original_stdout = sys.stdout
+                sys.stdout = open(os.devnull, 'w')
+                action = IAs[j].action(game.to_dict())
+                sys.stdout = original_stdout
+                game.résoudre_action(j,action)
 
         #phase non joueur
         game.phase_non_joueur()
@@ -66,8 +67,9 @@ def partie(noms_des_joueurs : list[str], scenario : str):
 
     game.log("game_over")
     game.log(f"scores {game.scores}")
+    
 
 if __name__ == '__main__':
     partie(['IA_FLOOD_FILL'], "maps/training0.txt")
-    #partie(['IA_aleatoire','IA_aleatoire','IA_aleatoire','IA_aleatoire'], "maps/battle0.txt")
+    # partie(['IA_aleatoire','IA_aleatoire','IA_aleatoire','IA_aleatoire'], "maps/battle1.txt")
     

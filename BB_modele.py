@@ -205,7 +205,7 @@ class Game:
 
         # condition : il n'y a pas déjà une bombe
         if pos not in [b.position for b in self.bombes]:
-            portée = 1 + self.bombers[num_joueur].niveau // 2
+            portée = 2 + self.bombers[num_joueur].niveau // 2
             self.bombes.append(Bombe(pos, portée, num_joueur))
             self.log(f"pose_bombe {num_joueur} {pos}")
 
@@ -259,6 +259,13 @@ class Game:
             v: Position = pos + d
             if self.est_non_bloquant(v):
                 voisines.append(v)
+
+        # si le fantôme est adjacent à un bomber il ne bouge pas
+        for v in voisines:
+            for b in self.bombers:
+                if b.position == v:
+                    return
+
         new = None
         if len(voisines) == 1:  # dans ce cas pas de choix
             new = voisines[0]
