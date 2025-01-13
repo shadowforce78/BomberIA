@@ -8,8 +8,11 @@ import random
 import logging
 
 # Configuration du logger
-logging.basicConfig(filename='ia_bomber.log', level=logging.DEBUG, 
-                    format='%(asctime)s - %(levellevelname)s - %(message)s')
+logging.basicConfig(
+    filename='ia_bomber.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class IA_Bomber:
     def __init__(
@@ -25,20 +28,17 @@ class IA_Bomber:
 
     def analyze_game_dict(self, game_dict: dict) -> None:
         """Analyse le contenu du dictionnaire du jeu"""
-        logging.debug(f"---" * 20)
-        logging.debug("\nContenu du dictionnaire game_dict:")
+        logging.debug("------------------------------------------------------------")
+        logging.debug("Analyzing game dictionary:")
         for key, value in game_dict.items():
-            logging.debug(f"\nClé: {key}")
-
-            # Afficher un exemple de la valeur selon son type
             if isinstance(value, list):
-                logging.debug(f"Type: Liste de longueur {len(value)}")
-                if value:
+                logging.debug(f"{key}: list[{len(value)}]")
+                if value and key in ['map', 'scores']:  # Only log specific important lists
                     for item in value:
-                        logging.debug(f"Valeur: {item}")
+                        logging.debug(str(item))
             else:
-                logging.debug(f"Valeur: {value}")
-        logging.debug(f"---" * 20)
+                logging.debug(f"{key}: {value}")
+        logging.debug("------------------------------------------------------------")
 
     def flood_fill(self, game_dict: dict) -> list[tuple[tuple[int, int], int]]:
         """Calcule la distance aux 10 minerais les plus proches en utilisant flood fill"""
@@ -95,36 +95,94 @@ class IA_Bomber:
         minerais.sort(key=lambda x: x[1])
         return minerais[:10]
 
+    def can_move_to(self, pos: tuple[int, int], direction: str, game_dict: dict) -> bool:
+        """Vérifie si le déplacement dans la direction donnée est possible"""
+        map_height = len(game_dict["map"])
+        map_width = len(game_dict["map"][0])
+        x, y = pos
+        
+        if direction == "H" and y > 0:
+            return game_dict["map"][y-1][x] != "C"
+        elif direction == "B" and y < map_height - 1:
+            return game_dict["map"][y+1][x] != "C"
+        elif direction == "G" and x > 0:
+            return game_dict["map"][y][x-1] != "C"
+        elif direction == "D" and x < map_width - 1:
+            return game_dict["map"][y][x+1] != "C"
+        return False
+
     def get_direction_to_target(self, current_pos: tuple[int, int], target_pos: tuple[int, int], game_dict: dict) -> str:
-        """Détermine la direction à prendre pour aller vers la cible en tenant compte des obstacles"""
+        """Détermine la direction à prendre pour aller vers la cible en évitant les obstacles"""
+        # Utiliser flood_fill pour trouver le meilleur chemin
+        carte = game_dict["map"]
+        height = len(carte)
+        width = len(carte[0])
+        
+        # Initialisation de la matrice des distances et des parents
+        distances = [[-1 for _ in range(width)] for _ in range(height)]
+        parents = [[None for _ in range(width)] for _ in range(height)]
+        distances[current_pos[1]][current_pos[0]] = 0
+        
+        # File pour le BFS
+        queue = [(current_pos[0], current_pos[1])]
+        target_found = False
+        
+        # Directions possibles
+        directions = {'D': (1, 0), 'G': (-1, 0), 'B': (0, 1), 'H': (0, -1)}
+        
+        # BFS pour trouver le plus court chemin
+        while queue and not target_found:
+            x, y = queue.pop(0)
+            
+            if (x, y) == target_pos:
+                target_found = True
+                break
+                
+            for direction, (dx, dy) in directions.items():
+                new_x, new_y = x + dx, y + dy
+                
+                # Vérifier les limites et les obstacles
+                if (0 <= new_x < width and 0 <= new_y < height and 
+                    distances[new_y][new_x] == -1 and carte[new_y][new_x] != 'C'):
+                    distances[new_y][new_x] = distances[y][x] + 1
+                    parents[new_y][new_x] = (x, y, direction)
+                    queue.append((new_x, new_y))
+        
+        # Si on a trouvé un chemin, remonter jusqu'à la première direction
+        if target_found:
+            x, y = target_pos
+            while parents[y][x] is not None:
+                parent_x, parent_y, direction = parents[y][x]
+                if (parent_x, parent_y) == current_pos:
+                    return direction
+                x, y = parent_x, parent_y
+        
+        # Si aucun chemin n'est trouvé, essayer les directions directes
         dx = target_pos[0] - current_pos[0]
         dy = target_pos[1] - current_pos[1]
         
-        # Si on est plus loin horizontalement et qu'on peut bouger horizontalement
-        if abs(dx) > abs(dy):
-            # Essayer d'abord horizontalement
-            if dx > 0 and game_dict["map"][current_pos[1]][current_pos[0] + 1] != "C":
-                return "D"
-            elif dx < 0 and game_dict["map"][current_pos[1]][current_pos[0] - 1] != "C":
-                return "G"
-            # Si bloqué horizontalement, essayer verticalement
-            elif dy > 0 and game_dict["map"][current_pos[1] + 1][current_pos[0]] != "C":
+        # Essayer d'abord vertical puis horizontal
+        if abs(dy) >= abs(dx):
+            if dy > 0 and self.can_move_to(current_pos, "B", game_dict):
                 return "B"
-            elif dy < 0 and game_dict["map"][current_pos[1] - 1][current_pos[0]] != "C":
+            elif dy < 0 and self.can_move_to(current_pos, "H", game_dict):
                 return "H"
+            elif dx > 0 and self.can_move_to(current_pos, "D", game_dict):
+                return "D"
+            elif dx < 0 and self.can_move_to(current_pos, "G", game_dict):
+                return "G"
+        # Essayer d'abord horizontal puis vertical
         else:
-            # Essayer d'abord verticalement
-            if dy > 0 and game_dict["map"][current_pos[1] + 1][current_pos[0]] != "C":
-                return "B"
-            elif dy < 0 and game_dict["map"][current_pos[1] - 1][current_pos[0]] != "C":
-                return "H"
-            # Si bloqué verticalement, essayer horizontalement
-            elif dx > 0 and game_dict["map"][current_pos[1]][current_pos[0] + 1] != "C":
+            if dx > 0 and self.can_move_to(current_pos, "D", game_dict):
                 return "D"
-            elif dx < 0 and game_dict["map"][current_pos[1]][current_pos[0] - 1] != "C":
+            elif dx < 0 and self.can_move_to(current_pos, "G", game_dict):
                 return "G"
-                
-        return "N"  # Si aucun mouvement n'est possible
+            elif dy > 0 and self.can_move_to(current_pos, "B", game_dict):
+                return "B"
+            elif dy < 0 and self.can_move_to(current_pos, "H", game_dict):
+                return "H"
+        
+        return "N"
 
     def is_safe_position(self, pos: tuple[int, int], bombes: list[dict]) -> bool:
         """Vérifie si une position est sûre par rapport aux bombes"""

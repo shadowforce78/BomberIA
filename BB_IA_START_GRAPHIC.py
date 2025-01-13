@@ -246,13 +246,22 @@ class JeuBomberTK:
     def jouer_tour(self):
         # Faire jouer chaque IA
         for j, ia in enumerate(self.ias):
-            if self.game.bombers[j].pv > 0:
-                original_stdout = sys.stdout
-                sys.stdout = open(os.devnull, "w")
-                action = ia.action(self.game.to_dict())
-                sys.stdout.close()
-                sys.stdout = original_stdout
-                self.game.résoudre_action(j, action)
+            # Vérifier si le joueur est en vie avant de jouer
+            if self.game.bombers[j].pv <= 0:
+                self.game_over(j)
+                return
+                
+            original_stdout = sys.stdout
+            sys.stdout = open(os.devnull, "w")
+            action = ia.action(self.game.to_dict())
+            sys.stdout.close()
+            sys.stdout = original_stdout
+            self.game.résoudre_action(j, action)
+
+            # Vérifier si le joueur est mort après son action
+            if self.game.bombers[j].pv <= 0:
+                self.game_over(j)
+                return
 
         # Phase non-joueur
         self.game.phase_non_joueur()
@@ -263,6 +272,19 @@ class JeuBomberTK:
             self.canvas.create_text(
                 400, 300, text="Partie Terminée", font=("Arial", 24), fill="red"
             )
+
+    def game_over(self, player_index):
+        """Affiche game over quand un joueur meurt"""
+        self.auto_play = False
+        self.btn_tour["state"] = "disabled"
+        self.btn_auto["state"] = "disabled"
+        self.canvas.create_text(
+            400, 300,
+            text=f"Game Over - Joueur {player_index + 1} est mort!",
+            font=("Arial", 24),
+            fill="red"
+        )
+        self.afficher_carte()
 
     def toggle_auto_play(self):
         """Active ou désactive le défilement automatique"""
