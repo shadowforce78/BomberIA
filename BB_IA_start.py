@@ -63,9 +63,11 @@ def partie(noms_des_joueurs: list[str], scenario: str):
         # phase joueurs
         for j in range(nb_joueurs):
             if game.bombers[j].pv > 0:
-                original_stdout = sys.stdout
-                sys.stdout = open(os.devnull, "w")
+                # Sauvegarde puis restauration du stdout après l'appel à action()
+                original_stdout = sys.stdout 
+                sys.stdout = open(os.devnull, 'w')
                 action = IAs[j].action(game.to_dict())
+                sys.stdout.close()
                 sys.stdout = original_stdout
 
                 position_actuelle = game.bombers[j].position
@@ -126,7 +128,7 @@ def partie(noms_des_joueurs: list[str], scenario: str):
 
 if __name__ == "__main__":
     # Test sur battle0.txt (4 joueurs)
-    partie(["IA_FLOOD_FILL"], "maps/training0.txt")
+    partie(["IA_FLOOD_FILL"], "maps/training1.txt")
 
     # Test sur battle1.txt (4 joueurs)
     # partie(['IA_aleatoire', 'IA_aleatoire', 'IA_aleatoire', 'IA_aleatoire'], "maps/battle1.txt")

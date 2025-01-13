@@ -5,7 +5,11 @@
 ##############################################################################
 
 import random
+import logging
 
+# Configuration du logger
+logging.basicConfig(filename='ia_bomber.log', level=logging.DEBUG, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 class IA_Bomber:
     def __init__(
@@ -21,20 +25,20 @@ class IA_Bomber:
 
     def analyze_game_dict(self, game_dict: dict) -> None:
         """Analyse le contenu du dictionnaire du jeu"""
-        print(f"---" * 20)
-        print("\nContenu du dictionnaire game_dict:")
+        logging.debug(f"---" * 20)
+        logging.debug("\nContenu du dictionnaire game_dict:")
         for key, value in game_dict.items():
-            print(f"\nClé: {key}")
+            logging.debug(f"\nClé: {key}")
 
             # Afficher un exemple de la valeur selon son type
             if isinstance(value, list):
-                print(f"Type: Liste de longueur {len(value)}")
+                logging.debug(f"Type: Liste de longueur {len(value)}")
                 if value:
                     for item in value:
-                        print(f"Valeur: {item}")
+                        logging.debug(f"Valeur: {item}")
             else:
-                print(f"Valeur: {value}")
-        print(f"---" * 20)
+                logging.debug(f"Valeur: {value}")
+        logging.debug(f"---" * 20)
 
     def flood_fill(self, game_dict: dict) -> list[tuple[tuple[int, int], int]]:
         """Calcule la distance aux 10 minerais les plus proches en utilisant flood fill"""
@@ -91,17 +95,145 @@ class IA_Bomber:
         minerais.sort(key=lambda x: x[1])
         return minerais[:10]
 
+    def get_direction_to_target(self, current_pos: tuple[int, int], target_pos: tuple[int, int]) -> str:
+        """Détermine la direction à prendre pour aller vers la cible"""
+        dx = target_pos[0] - current_pos[0]
+        dy = target_pos[1] - current_pos[1]
+        
+        if abs(dx) > abs(dy):
+            return "D" if dx > 0 else "G"
+        else:
+            return "B" if dy > 0 else "H"
+
+    def is_safe_position(self, pos: tuple[int, int], bombes: list[dict]) -> bool:
+        """Vérifie si une position est sûre par rapport aux bombes"""
+        for bombe in bombes:
+            bombe_pos = bombe["position"]
+            portee = bombe["portée"]
+            
+            # Si même ligne ou même colonne que la bombe
+            if pos[0] == bombe_pos[0] or pos[1] == bombe_pos[1]:
+                distance = abs(pos[0] - bombe_pos[0]) + abs(pos[1] - bombe_pos[1])
+                if distance <= portee:
+                    return False
+        return True
+
+    def get_safe_distance(self, bomb_pos: tuple[int, int], current_pos: tuple[int, int], portee: int = 2) -> bool:
+        """Vérifie si la position actuelle est à une distance sûre de la bombe"""
+        if current_pos[0] == bomb_pos[0] or current_pos[1] == bomb_pos[1]:
+            distance = abs(current_pos[0] - bomb_pos[0]) + abs(current_pos[1] - bomb_pos[1])
+            return distance > portee + 1
+        return True
+
+    def count_adjacent_minerals(self, pos: tuple[int, int], game_dict: dict) -> int:
+        """Compte le nombre de minerais adjacents à une position"""
+        count = 0
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            x, y = pos[0] + dx, pos[1] + dy
+            if 0 <= y < len(game_dict["map"]) and 0 <= x < len(game_dict["map"][0]):
+                if game_dict["map"][y][x] == "M":
+                    count += 1
+        return count
+
+    def should_place_bomb(self, pos: tuple[int, int], minerai: tuple[int, int]) -> bool:
+        """Détermine s'il faut poser une bombe basé sur la position du minerai"""
+        if pos[0] == minerai[0]:  # Même colonne
+            return abs(pos[1] - minerai[1]) <= 2
+        if pos[1] == minerai[1]:  # Même ligne
+            return abs(pos[0] - minerai[0]) <= 2
+        return False
+
+    def get_best_minerai(self, minerais_proches: list, game_dict: dict) -> tuple[tuple[int, int], int]:
+        """Choisit le meilleur minerai à cibler en fonction du nombre de minerais adjacents"""
+        best_score = -1
+        best_minerai = None
+        
+        for minerai, distance in minerais_proches:
+            score = 0
+            # Compte les minerais adjacents
+            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                x, y = minerai[0] + dx, minerai[1] + dy
+                if 0 <= y < len(game_dict["map"]) and 0 <= x < len(game_dict["map"][0]):
+                    if game_dict["map"][y][x] == "M":
+                        score += 1
+            
+            # Pénalise la distance
+            score = score - (distance * 0.1)
+            
+            if score > best_score:
+                best_score = score
+                best_minerai = minerai
+                
+        return best_minerai, best_score
+
     def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
         minerais_proches = self.flood_fill(game_dict)
-        print(f"Minerais les plus proches: {minerais_proches}")
+        logging.debug(f"Minerais les plus proches: {minerais_proches}")
         
-        #  H/B/G/D
-        t = game_dict["compteur_tour"]
-        # 15 fois droit, pose une bombe, 15 fois gauche
-        suite = ["D"] * 15 + ["X"] + ["G"] * 15
-        if t < len(suite):
-            return suite[t]
+        # Récupérer la position actuelle du bomber
+        bomber_pos = None
+        for bomber in game_dict["bombers"]:
+            if bomber["num_joueur"] == self.num_joueur:
+                bomber_pos = bomber["position"]
+                break
+                
+        if not bomber_pos or not minerais_proches:
+            return "N"
+            
+        # État du bomber
+        self.derniere_action = getattr(self, 'derniere_action', None)
+        self.compte_recul = getattr(self, 'compte_recul', 0)
+        self.direction_recul = getattr(self, 'direction_recul', None)
+        self.derniere_bombe = getattr(self, 'derniere_bombe', None)
+        self.cible = getattr(self, 'cible', None)
+        
+        # Si on est en train de reculer après avoir posé une bombe
+        if self.compte_recul > 0:
+            self.compte_recul -= 1
+            return self.direction_recul
+            
+        # Vérifier les bombes actives
+        if self.derniere_bombe and not self.get_safe_distance(self.derniere_bombe, bomber_pos):
+            return self.direction_recul
+
+        # Position du minerai le plus proche
+        minerai_proche = minerais_proches[0][0]
+        
+        # Compter le nombre de minerais qu'on peut toucher avec une bombe
+        nb_minerais_adjacents = self.count_adjacent_minerals(bomber_pos, game_dict)
+        
+        # Si on peut toucher plusieurs minerais d'un coup, on pose la bombe
+        if nb_minerais_adjacents > 1:
+            self.derniere_bombe = bomber_pos
+            self.compte_recul = 5
+            return "X"
+        
+        # Si on est adjacent au minerai
+        if abs(bomber_pos[0] - minerai_proche[0]) <= 1 and abs(bomber_pos[1] - minerai_proche[1]) <= 1:
+            # Déterminer la direction de recul la plus sûre (opposée au minerai)
+            if bomber_pos[0] < minerai_proche[0]:
+                self.direction_recul = "G"
+            elif bomber_pos[0] > minerai_proche[0]:
+                self.direction_recul = "D"
+            elif bomber_pos[1] < minerai_proche[1]:
+                self.direction_recul = "H"
+            else:
+                self.direction_recul = "B"
+                
+            # Poser la bombe et commencer le recul
+            self.derniere_bombe = bomber_pos
+            self.compte_recul = 5  # Augmenté à 5 pour plus de sécurité
+            return "X"
+            
+        # Se déplacer vers le minerai seulement si on est en sécurité
+        if not self.derniere_bombe or self.get_safe_distance(self.derniere_bombe, bomber_pos):
+            direction = self.get_direction_to_target(bomber_pos, minerai_proche)
+            self.derniere_action = direction
+            return direction
+            
+        # Sinon continuer à reculer
+        return self.direction_recul
 
 
 # Les clés attendues dans game_dict sont:
