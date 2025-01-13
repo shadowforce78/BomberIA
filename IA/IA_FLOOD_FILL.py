@@ -21,6 +21,7 @@ class IA_Bomber:
 
     def analyze_game_dict(self, game_dict: dict) -> None:
         """Analyse le contenu du dictionnaire du jeu"""
+        print(f"---" * 20)
         print("\nContenu du dictionnaire game_dict:")
         for key, value in game_dict.items():
             print(f"\nClé: {key}")
@@ -33,6 +34,7 @@ class IA_Bomber:
                         print(f"Valeur: {item}")
             else:
                 print(f"Valeur: {value}")
+        print(f"---" * 20)
 
     def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
