@@ -147,6 +147,19 @@ class JeuBomberTK:
         # Démarrage de l'affichage
         self.afficher_carte()
 
+        # Frame pour les scores en bas de l'écran
+        self.info_frame = tk.Frame(self.main_frame)
+        self.info_frame.pack(fill='x', pady=5)
+        
+        # Labels pour les scores avec plus d'espace entre eux
+        self.score_labels = []
+        label_colors = ["red", "blue", "green", "yellow"]
+        for i in range(len(selected_ias)):  # Utilise le nombre réel de joueurs
+            label = tk.Label(self.info_frame, text=f"Joueur {i+1}: 0 pts", 
+                           font=("Arial", 12), fg=label_colors[i])
+            label.grid(row=0, column=i, padx=20)  # Plus d'espace entre les labels
+            self.score_labels.append(label)
+
     def _charger_IAs(self):
         list_ia = []
         for i, ia_name in enumerate(self.selected_ias):
@@ -243,35 +256,58 @@ class JeuBomberTK:
                 fill="red"
             )
 
-    def jouer_tour(self):
-        # Faire jouer chaque IA
-        for j, ia in enumerate(self.ias):
-            # Vérifier si le joueur est en vie avant de jouer
-            if self.game.bombers[j].pv <= 0:
-                self.game_over(j)
-                return
-                
-            original_stdout = sys.stdout
-            sys.stdout = open(os.devnull, "w")
-            action = ia.action(self.game.to_dict())
-            sys.stdout.close()
-            sys.stdout = original_stdout
-            self.game.résoudre_action(j, action)
+        # Mise à jour des scores de manière sécurisée
+        for i in range(len(self.score_labels)):
+            if i < len(self.game.bombers):
+                bomber = self.game.bombers[i]
+                score_text = f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
+                self.score_labels[i].config(text=score_text)
+            else:
+                self.score_labels[i].config(text=f"Joueur {i+1}: Éliminé")
 
-            # Vérifier si le joueur est mort après son action
-            if self.game.bombers[j].pv <= 0:
-                self.game_over(j)
-                return
+    def jouer_tour(self):
+        # Vérifier si le jeu n'est pas déjà terminé
+        if self.game.is_game_over():
+            self.finir_partie()
+            return
+
+        # Faire jouer chaque IA
+        alive_players = 0
+        for j, ia in enumerate(self.ias):
+            # Vérifier si le joueur existe encore dans la liste des bombers
+            if j < len(self.game.bombers) and self.game.bombers[j].pv > 0:
+                alive_players += 1
+                action = None
+                try:
+                    original_stdout = sys.stdout
+                    sys.stdout = open(os.devnull, "w")
+                    action = ia.action(self.game.to_dict())
+                    sys.stdout.close()
+                    sys.stdout = original_stdout
+                    
+                    if action:
+                        self.game.résoudre_action(j, action)
+                except Exception as e:
+                    print(f"Erreur pour le joueur {j}: {str(e)}")
+                    continue
 
         # Phase non-joueur
-        self.game.phase_non_joueur()
-        self.afficher_carte()
+        try:
+            self.game.phase_non_joueur()
+        except Exception as e:
+            print(f"Erreur dans la phase non-joueur: {str(e)}")
 
-        if self.game.is_game_over():
-            self.btn_tour["state"] = "disabled"
-            self.canvas.create_text(
-                400, 300, text="Partie Terminée", font=("Arial", 24), fill="red"
-            )
+        # Mise à jour de l'affichage
+        self.afficher_carte()
+        
+        # Vérifie les conditions de fin de partie
+        if alive_players <= 1 or self.game.is_game_over():
+            self.finir_partie()
+            return
+
+        # Continue le défilement automatique si activé
+        if self.auto_play and not self.game.is_game_over():
+            self.master.after(self.auto_play_speed, self.jouer_tour_auto)
 
     def game_over(self, player_index):
         """Affiche game over quand un joueur meurt"""
@@ -300,6 +336,35 @@ class JeuBomberTK:
         if self.auto_play and not self.game.is_game_over():
             self.jouer_tour()
             self.master.after(self.auto_play_speed, self.jouer_tour_auto)
+
+    def finir_partie(self):
+        """Gestion de la fin de partie"""
+        self.auto_play = False
+        self.btn_tour["state"] = "disabled"
+        self.btn_auto["state"] = "disabled"
+        
+        # Trouver le gagnant
+        max_score = -1
+        winner = -1
+        for i, score in enumerate(self.game.scores):
+            if score > max_score:
+                max_score = score
+                winner = i
+
+        if winner >= 0:
+            self.canvas.create_text(
+                400, 300,
+                text=f"Partie Terminée - Joueur {winner + 1} gagne avec {max_score} points!",
+                font=("Arial", 24, "bold"),
+                fill="red"
+            )
+        else:
+            self.canvas.create_text(
+                400, 300,
+                text="Partie Terminée - Égalité!",
+                font=("Arial", 24, "bold"),
+                fill="red"
+            )
 
 
 if __name__ == "__main__":
