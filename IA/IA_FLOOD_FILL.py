@@ -101,36 +101,63 @@ class IA_Bomber:
         map_width = len(game_dict["map"][0])
         x, y = pos
         
-        if direction == "H" and y > 0:
-            return game_dict["map"][y-1][x] != "C"
-        elif direction == "B" and y < map_height - 1:
-            return game_dict["map"][y+1][x] != "C"
-        elif direction == "G" and x > 0:
-            return game_dict["map"][y][x-1] != "C"
-        elif direction == "D" and x < map_width - 1:
-            return game_dict["map"][y][x+1] != "C"
-        return False
+        # Calculer la nouvelle position selon la direction
+        new_x, new_y = x, y
+        if direction == "H": new_y -= 1
+        elif direction == "B": new_y += 1
+        elif direction == "G": new_x -= 1
+        elif direction == "D": new_x += 1
+        
+        # Vérifier les limites de la carte
+        if not (0 <= new_x < map_width and 0 <= new_y < map_height):
+            return False
+            
+        # Vérifier les obstacles
+        if game_dict["map"][new_y][new_x] == "C":
+            return False
+            
+        # Vérifier si la case est occupée par une bombe non explosée
+        for bombe in game_dict.get("bombes", []):
+            if (new_x, new_y) == bombe["position"]:
+                # Ne pas marcher sur une bombe qui n'a pas encore explosé
+                if bombe["timer"] > 1:
+                    return False
+                    
+        return True
 
     def get_direction_to_target(self, current_pos: tuple[int, int], target_pos: tuple[int, int], game_dict: dict) -> str:
         """Détermine la direction à prendre pour aller vers la cible en évitant les obstacles"""
-        # Utiliser flood_fill pour trouver le meilleur chemin
-        carte = game_dict["map"]
-        height = len(carte)
-        width = len(carte[0])
+        # Ajout d'un compteur de blocage pour éviter les boucles infinies
+        self.blocked_counter = getattr(self, 'blocked_counter', 0)
+        self.last_position = getattr(self, 'last_position', None)
         
-        # Initialisation de la matrice des distances et des parents
-        distances = [[-1 for _ in range(width)] for _ in range(height)]
-        parents = [[None for _ in range(width)] for _ in range(height)]
+        # Si on est à la même position pendant plusieurs tours
+        if self.last_position == current_pos:
+            self.blocked_counter += 1
+        else:
+            self.blocked_counter = 0
+            
+        # Si bloqué pendant plus de 3 tours, essayer une direction alternative
+        if self.blocked_counter > 3:
+            logging.debug(f"Blocage détecté! Position: {current_pos}, Compteur: {self.blocked_counter}")
+            self.blocked_counter = 0
+            
+            # Essayer toutes les directions possibles
+            for direction in ['H', 'B', 'G', 'D']:
+                if self.can_move_to(current_pos, direction, game_dict):
+                    logging.debug(f"Tentative de déblocage: direction {direction}")
+                    return direction
+                    
+        self.last_position = current_pos
+        
+        # Utilisation du flood fill pour trouver le meilleur chemin
+        distances = [[-1 for _ in range(len(game_dict["map"][0]))] for _ in range(len(game_dict["map"]))]
+        parents = [[None for _ in range(len(game_dict["map"][0]))] for _ in range(len(game_dict["map"]))]
         distances[current_pos[1]][current_pos[0]] = 0
         
-        # File pour le BFS
         queue = [(current_pos[0], current_pos[1])]
         target_found = False
         
-        # Directions possibles
-        directions = {'D': (1, 0), 'G': (-1, 0), 'B': (0, 1), 'H': (0, -1)}
-        
-        # BFS pour trouver le plus court chemin
         while queue and not target_found:
             x, y = queue.pop(0)
             
@@ -138,50 +165,33 @@ class IA_Bomber:
                 target_found = True
                 break
                 
-            for direction, (dx, dy) in directions.items():
-                new_x, new_y = x + dx, y + dy
+            for direction in ['H', 'B', 'G', 'D']:
+                if not self.can_move_to((x, y), direction, game_dict):
+                    continue
+                    
+                new_x, new_y = x, y
+                if direction == 'H': new_y -= 1
+                elif direction == 'B': new_y += 1
+                elif direction == 'G': new_x -= 1
+                elif direction == 'D': new_x += 1
                 
-                # Vérifier les limites et les obstacles
-                if (0 <= new_x < width and 0 <= new_y < height and 
-                    distances[new_y][new_x] == -1 and carte[new_y][new_x] != 'C'):
+                # Vérifier si cette position a déjà été visitée
+                if distances[new_y][new_x] == -1:
                     distances[new_y][new_x] = distances[y][x] + 1
                     parents[new_y][new_x] = (x, y, direction)
                     queue.append((new_x, new_y))
-        
-        # Si on a trouvé un chemin, remonter jusqu'à la première direction
+                    logging.debug(f"Exploration de ({new_x}, {new_y}) depuis ({x}, {y}) direction {direction}")
+
         if target_found:
             x, y = target_pos
             while parents[y][x] is not None:
                 parent_x, parent_y, direction = parents[y][x]
                 if (parent_x, parent_y) == current_pos:
+                    logging.debug(f"Chemin trouvé vers {target_pos}, direction: {direction}")
                     return direction
                 x, y = parent_x, parent_y
         
-        # Si aucun chemin n'est trouvé, essayer les directions directes
-        dx = target_pos[0] - current_pos[0]
-        dy = target_pos[1] - current_pos[1]
-        
-        # Essayer d'abord vertical puis horizontal
-        if abs(dy) >= abs(dx):
-            if dy > 0 and self.can_move_to(current_pos, "B", game_dict):
-                return "B"
-            elif dy < 0 and self.can_move_to(current_pos, "H", game_dict):
-                return "H"
-            elif dx > 0 and self.can_move_to(current_pos, "D", game_dict):
-                return "D"
-            elif dx < 0 and self.can_move_to(current_pos, "G", game_dict):
-                return "G"
-        # Essayer d'abord horizontal puis vertical
-        else:
-            if dx > 0 and self.can_move_to(current_pos, "D", game_dict):
-                return "D"
-            elif dx < 0 and self.can_move_to(current_pos, "G", game_dict):
-                return "G"
-            elif dy > 0 and self.can_move_to(current_pos, "B", game_dict):
-                return "B"
-            elif dy < 0 and self.can_move_to(current_pos, "H", game_dict):
-                return "H"
-        
+        logging.debug(f"Aucun chemin trouvé vers {target_pos}, retour à N")
         return "N"
 
     def is_safe_position(self, pos: tuple[int, int], bombes: list[dict]) -> bool:
@@ -280,106 +290,105 @@ class IA_Bomber:
 
     def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
-        minerais_proches = self.flood_fill(game_dict)
-        logging.debug(f"Minerais les plus proches: {minerais_proches}")
+        # Log de l'état actuel
+        logging.debug("\n=== Nouveau tour ===")
         
-        # Récupérer la position actuelle du bomber
+        # Position actuelle du bomber
         bomber_pos = None
         for bomber in game_dict["bombers"]:
             if bomber["num_joueur"] == self.num_joueur:
                 bomber_pos = bomber["position"]
                 break
+        
+        logging.debug(f"Position du bomber: {bomber_pos}")
+        
+        # Analyse des minerais proches
+        minerais_proches = self.flood_fill(game_dict)
+        logging.debug(f"Minerais les plus proches: {minerais_proches}")
+        
+        # Log des bombes actives
+        if game_dict["bombes"]:
+            logging.debug("Bombes actives:")
+            for bombe in game_dict["bombes"]:
+                logging.debug(f"- Position: {bombe['position']}, Timer: {bombe['timer']}, Portée: {bombe['portée']}")
+        
+        # Log des fantômes
+        if game_dict["fantômes"]:
+            logging.debug("Fantômes:")
+            for fantome in game_dict["fantômes"]:
+                logging.debug(f"- Position: {fantome['position']}")
                 
         if not bomber_pos or not minerais_proches:
+            logging.debug("Aucune action possible - retour N")
             return "N"
             
-        # État du bomber
+        # État du bomber et décision
         self.derniere_action = getattr(self, 'derniere_action', None)
         self.compte_recul = getattr(self, 'compte_recul', 0)
         self.direction_recul = getattr(self, 'direction_recul', None)
         self.derniere_bombe = getattr(self, 'derniere_bombe', None)
 
-        # Si en danger à cause d'une bombe
+        # Vérification du danger des bombes
         if game_dict["bombes"]:
             for bombe in game_dict["bombes"]:
                 if not self.get_safe_distance(bombe["position"], bomber_pos):
                     safe_dir = self.get_safe_direction(bomber_pos, game_dict["bombes"], game_dict["map"])
-                    if safe_dir != "N":
-                        return safe_dir
+                    logging.debug(f"En danger! Direction de fuite choisie: {safe_dir}")
+                    return safe_dir
 
-        # Réinitialisation des états après explosion de bombe
-        if self.derniere_bombe:
-            bombe_existe = False
-            for bombe in game_dict["bombes"]:
-                if bombe["position"] == self.derniere_bombe:
-                    bombe_existe = True
-                    break
-            if not bombe_existe:  # La bombe a explosé
-                self.derniere_bombe = None
-                self.compte_recul = 0
-                self.direction_recul = None
-        
-        # Si on est en train de reculer après avoir posé une bombe
+        # Gestion du recul après bombe
         if self.compte_recul > 0:
             self.compte_recul -= 1
-            return self.direction_recul
-            
-        # Vérifier les bombes actives
-        if self.derniere_bombe and not self.get_safe_distance(self.derniere_bombe, bomber_pos):
+            logging.debug(f"Recul en cours: direction={self.direction_recul}, compte={self.compte_recul}")
             return self.direction_recul
 
-        # Position du minerai le plus proche
+        # Position du minerai ciblé et décision de bombe
         minerai_proche = minerais_proches[0][0]
-        
-        # Compter le nombre de minerais qu'on peut toucher avec une bombe
         nb_minerais_adjacents = self.count_adjacent_minerals(bomber_pos, game_dict)
+        logging.debug(f"Minerai ciblé: {minerai_proche}, Minerais adjacents: {nb_minerais_adjacents}")
+
+        # Décision de poser une bombe si on est adjacent à un minerai
+        dist_x = abs(bomber_pos[0] - minerai_proche[0])
+        dist_y = abs(bomber_pos[1] - minerai_proche[1])
         
-        # Si on peut toucher plusieurs minerais d'un coup, on pose la bombe
-        if nb_minerais_adjacents > 1:
-            self.derniere_bombe = bomber_pos
-            self.compte_recul = 5
-            return "X"
+        if (dist_x <= 1 and dist_y == 0) or (dist_y <= 1 and dist_x == 0):
+            # On vérifie qu'il n'y a pas déjà une bombe à cet endroit
+            bombe_presente = False
+            for bombe in game_dict.get("bombes", []):
+                if bombe["position"] == bomber_pos:
+                    bombe_presente = True
+                    break
+                    
+            if not bombe_presente:
+                logging.debug(f"Pose de bombe - minerai adjacent à distance ({dist_x}, {dist_y})")
+                self.derniere_bombe = bomber_pos
+                self.compte_recul = 3
+                return "X"
+
+        # Gestion des mouvements vers le minerai
+        direction = self.get_direction_to_target(bomber_pos, minerai_proche, game_dict)
+        logging.debug(f"Direction choisie vers minerai {minerai_proche}: {direction}")
         
-        # Si on est adjacent au minerai
-        if abs(bomber_pos[0] - minerai_proche[0]) <= 1 and abs(bomber_pos[1] - minerai_proche[1]) <= 1:
-            # Déterminer la direction de recul la plus sûre (opposée au minerai)
-            if bomber_pos[0] < minerai_proche[0]:
-                self.direction_recul = "G"
-            elif bomber_pos[0] > minerai_proche[0]:
-                self.direction_recul = "D"
-            elif bomber_pos[1] < minerai_proche[1]:
-                self.direction_recul = "H"
-            else:
-                self.direction_recul = "B"
-                
-            # Poser la bombe et commencer le recul
-            self.derniere_bombe = bomber_pos
-            self.compte_recul = 3  # Augmenté à 5 pour plus de sécurité
-            return "X"
-            
-        # Éviter les mouvements répétitifs
-        if hasattr(self, 'derniere_position') and hasattr(self, 'position_counter'):
-            if self.derniere_position == bomber_pos:
-                self.position_counter += 1
-                if self.position_counter >= 3:  # Si bloqué au même endroit pendant 3 tours
-                    self.position_counter = 0
-                    return random.choice(["H", "B", "G", "D"])  # Mouvement aléatoire pour se débloquer
-            else:
-                self.position_counter = 0
+        # Vérifier explicitement si le mouvement est possible
+        if direction != "N" and self.can_move_to(bomber_pos, direction, game_dict):
+            logging.debug(f"Mouvement possible vers {direction}")
         else:
-            self.position_counter = 0
-            
-        self.derniere_position = bomber_pos
+            logging.debug(f"Mouvement impossible vers {direction}, recherche d'une alternative")
+            # Essayer les autres directions si le chemin direct est bloqué
+            for test_dir in ['B', 'D', 'G', 'H']:
+                if self.can_move_to(bomber_pos, test_dir, game_dict):
+                    direction = test_dir
+                    logging.debug(f"Direction alternative trouvée: {direction}")
+                    break
 
-        # Se déplacer vers le minerai seulement si on est en sécurité
-        if not self.derniere_bombe or self.get_safe_distance(self.derniere_bombe, bomber_pos):
-            direction = self.get_direction_to_target(bomber_pos, minerai_proche, game_dict)
-            self.derniere_action = direction
-            return direction
-            
-        # Sinon continuer à reculer
-        return self.direction_recul
-
+        logging.debug(f"Direction finale choisie: {direction}")
+        
+        # Log de la décision finale
+        if direction != self.derniere_action:
+            logging.debug(f"Changement de direction: {self.derniere_action} -> {direction}")
+        
+        self.derniere_action = direction
+        return direction
 
 # Les clés attendues dans game_dict sont:
 # - 'map': la carte du jeu (liste de strings)
