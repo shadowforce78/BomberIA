@@ -291,7 +291,7 @@ class IA_Bomber:
     def action(self, game_dict: dict) -> str:
         """Décide de l'action à faire"""
         # Log de l'état actuel
-        logging.debug("\n=== Nouveau tour ===")
+        logging.debug("\n=== Nouveau tour (tour {}) ===".format(game_dict["compteur_tour"]))
         
         # Position actuelle du bomber
         bomber_pos = None
