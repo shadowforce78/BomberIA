@@ -5,21 +5,68 @@ from BB_modele import Game, charger_scenario
 import importlib
 import sys
 
+# Configuration du thème
+COLORS = {
+    "primary": "#2c3e50",
+    "secondary": "#34495e",
+    "accent": "#3498db",
+    "success": "#2ecc71",
+    "warning": "#f1c40f",
+    "danger": "#e74c3c",
+    "light": "#ecf0f1",
+    "dark": "#2c3e50",
+    "text": "#2c3e50",
+    "text_light": "#ffffff",
+}
+
+
+class ModernButton(tk.Button):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(
+            bg=COLORS["accent"],
+            fg=COLORS["text_light"],
+            font=("Helvetica", 10),
+            relief="flat",
+            padx=15,
+            pady=8,
+            cursor="hand2",
+        )
+        self.bind("<Enter>", self.on_enter)
+        self.bind("<Leave>", self.on_leave)
+
+    def on_enter(self, e):
+        self["background"] = "#2980b9"
+
+    def on_leave(self, e):
+        self["background"] = COLORS["accent"]
+
 
 class SelectionWindow:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Configuration de la partie")
-        self.root.geometry("400x500")
+        self.root.title("BomberBUT - Configuration")
+        self.root.geometry("500x700")
+        self.root.configure(bg=COLORS["light"])
+
+        # Style configuration
+        style = ttk.Style()
+        style.configure(
+            "Modern.TCombobox",
+            fieldbackground=COLORS["light"],
+            background=COLORS["accent"],
+        )
+        style.configure(
+            "Modern.TRadiobutton", background=COLORS["light"], foreground=COLORS["text"]
+        )
 
         # Variables
         self.mode_var = tk.StringVar(value="solo")
         self.ia_selections = []
         self.selected_map = tk.StringVar()
 
-        # Liste des IAs disponibles
         self.available_ias = self._get_available_ias()
-        self.create_widgets()
+        self.create_modern_widgets()
 
     def _get_available_ias(self):
         # Récupère la liste des fichiers IA dans le dossier IA
@@ -30,55 +77,113 @@ class SelectionWindow:
                 ia_files.append(file[:-3])  # Enlever le .py
         return ia_files
 
-    def create_widgets(self):
+    def create_modern_widgets(self):
+        # Titre principal
+        title_frame = tk.Frame(self.root, bg=COLORS["light"])
+        title_frame.pack(pady=20)
+        tk.Label(
+            title_frame,
+            text="Configuration de la partie",
+            font=("Helvetica", 18, "bold"),
+            bg=COLORS["light"],
+            fg=COLORS["text"],
+        ).pack()
+
+        # Container principal
+        main_container = tk.Frame(self.root, bg=COLORS["light"])
+        main_container.pack(padx=40, pady=20, fill="both", expand=True)
+
         # Mode de jeu
-        tk.Label(self.root, text="Mode de jeu:").pack(pady=5)
-        tk.Radiobutton(
-            self.root,
+        game_mode_frame = tk.LabelFrame(
+            main_container,
+            text="Mode de jeu",
+            font=("Helvetica", 12),
+            bg=COLORS["light"],
+            fg=COLORS["text"],
+        )
+        game_mode_frame.pack(fill="x", pady=10)
+
+        ttk.Radiobutton(
+            game_mode_frame,
             text="Solo",
             variable=self.mode_var,
             value="solo",
             command=self.update_ia_selectors,
-        ).pack()
-        tk.Radiobutton(
-            self.root,
+            style="Modern.TRadiobutton",
+        ).pack(padx=20, pady=5)
+        ttk.Radiobutton(
+            game_mode_frame,
             text="4 Joueurs",
             variable=self.mode_var,
             value="quatre",
             command=self.update_ia_selectors,
-        ).pack()
+            style="Modern.TRadiobutton",
+        ).pack(padx=20, pady=5)
 
         # Frame pour les sélecteurs d'IA
-        self.ia_frame = tk.Frame(self.root)
-        self.ia_frame.pack(pady=10)
+        self.ia_frame = tk.LabelFrame(
+            main_container,
+            text="Sélection des IAs",
+            font=("Helvetica", 12),
+            bg=COLORS["light"],
+            fg=COLORS["text"],
+        )
+        self.ia_frame.pack(fill="x", pady=10)
 
         # Sélection de la carte
-        tk.Label(self.root, text="Sélection de la carte:").pack(pady=5)
+        map_frame = tk.LabelFrame(
+            main_container,
+            text="Sélection de la carte",
+            font=("Helvetica", 12),
+            bg=COLORS["light"],
+            fg=COLORS["text"],
+        )
+        map_frame.pack(fill="x", pady=10)
+
         maps = [f for f in os.listdir("maps") if f.endswith(".txt")]
-        ttk.Combobox(self.root, textvariable=self.selected_map, values=maps).pack()
+        map_combo = ttk.Combobox(
+            map_frame,
+            textvariable=self.selected_map,
+            values=maps,
+            style="Modern.TCombobox",
+        )
+        map_combo.pack(padx=20, pady=10, fill="x")
 
         # Bouton de démarrage
-        tk.Button(self.root, text="Démarrer la partie", command=self.start_game).pack(
-            pady=20
+        self.start_button = ModernButton(
+            main_container, text="Démarrer la partie", command=self.start_game
         )
+        self.start_button.pack(pady=20)
 
         self.update_ia_selectors()
 
     def update_ia_selectors(self):
-        # Nettoyer les anciens sélecteurs
         for widget in self.ia_frame.winfo_children():
             widget.destroy()
         self.ia_selections.clear()
 
-        # Créer les nouveaux sélecteurs
         num_players = 1 if self.mode_var.get() == "solo" else 4
         for i in range(num_players):
-            tk.Label(self.ia_frame, text=f"Joueur {i+1}:").pack()
+            player_frame = tk.Frame(self.ia_frame, bg=COLORS["light"])
+            player_frame.pack(fill="x", padx=20, pady=5)
+
+            tk.Label(
+                player_frame,
+                text=f"Joueur {i+1}",
+                font=("Helvetica", 10),
+                bg=COLORS["light"],
+                fg=COLORS["text"],
+            ).pack(side="left")
+
             ia_var = tk.StringVar(value=self.available_ias[0])
             self.ia_selections.append(ia_var)
-            ttk.Combobox(
-                self.ia_frame, textvariable=ia_var, values=self.available_ias
-            ).pack()
+            combo = ttk.Combobox(
+                player_frame,
+                textvariable=ia_var,
+                values=self.available_ias,
+                style="Modern.TCombobox",
+            )
+            combo.pack(side="right", fill="x", expand=True, padx=10)
 
     def start_game(self):
         selected_ias = [var.get() for var in self.ia_selections]
@@ -92,20 +197,28 @@ class SelectionWindow:
 class JeuBomberTK:
     def __init__(self, master, scenario, selected_ias):
         self.master = master
-        self.master.title("BomberBUT - Interface Tkinter")
+        self.master.title("BomberBUT")
+        self.master.configure(bg=COLORS["light"])
 
-        # Frame principale
-        self.main_frame = tk.Frame(master)
-        self.main_frame.pack(padx=10, pady=10)
+        # Frame principale avec padding
+        self.main_frame = tk.Frame(master, bg=COLORS["light"])
+        self.main_frame.pack(padx=20, pady=20)
 
-        # Canvas
-        self.canvas = tk.Canvas(self.main_frame, width=800, height=600, bg="white")
+        # Canvas avec bordure moderne
+        self.canvas = tk.Canvas(
+            self.main_frame,
+            width=800,
+            height=600,
+            bg=COLORS["light"],
+            highlightthickness=1,
+            highlightbackground=COLORS["accent"],
+        )
         self.canvas.pack()
 
         # Frame pour les informations
-        self.info_frame = tk.Frame(self.main_frame)
-        self.info_frame.pack(fill='x', pady=5)
-        
+        self.info_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
+        self.info_frame.pack(fill="x", pady=5)
+
         # Labels pour les scores
         self.score_labels = []
         for i in range(4):  # Maximum 4 joueurs
@@ -113,65 +226,78 @@ class JeuBomberTK:
             label.grid(row=0, column=i, padx=10)
             self.score_labels.append(label)
 
-        # Boutons de contrôle
-        self.control_frame = tk.Frame(self.main_frame)
-        self.control_frame.pack(pady=5)
+        # Frame pour les contrôles avec style moderne
+        self.control_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
+        self.control_frame.pack(pady=20)
 
-        self.btn_tour = tk.Button(
-            self.control_frame, text="Jouer un Tour", command=self.jouer_tour
+        # Boutons modernes
+        self.btn_tour = ModernButton(
+            self.control_frame, text="▶ Tour suivant", command=self.jouer_tour
         )
-        self.btn_tour.grid(row=0, column=0, padx=5)
+        self.btn_tour.grid(row=0, column=0, padx=10)
 
-        self.btn_quit = tk.Button(
-            self.control_frame, text="Quitter", command=master.quit
+        self.btn_auto = ModernButton(
+            self.control_frame, text="⟳ Défilement Auto", command=self.toggle_auto_play
         )
-        self.btn_quit.grid(row=0, column=1, padx=5)
+        self.btn_auto.grid(row=0, column=1, padx=10)
 
-        # Ajout d'une variable pour tracker l'état du défilement automatique
-        self.auto_play = False
-        self.auto_play_speed = 1000  # 1000ms = 1 seconde par tour
-        
-        # Ajout du bouton de défilement automatique dans control_frame
-        self.btn_auto = tk.Button(
-            self.control_frame, 
-            text="Défilement Auto", 
-            command=self.toggle_auto_play
-        )
-        self.btn_auto.grid(row=0, column=2, padx=5)
+        # Slider moderne pour la vitesse
+        self.speed_frame = tk.Frame(self.control_frame, bg=COLORS["light"])
+        self.speed_frame.grid(row=0, column=2, padx=20)
 
-        # Ajout d'un slider pour contrôler la vitesse
+        tk.Label(
+            self.speed_frame,
+            text="Vitesse",
+            font=("Helvetica", 10),
+            bg=COLORS["light"],
+            fg=COLORS["text"],
+        ).pack()
+
         self.speed_scale = tk.Scale(
-            self.control_frame,
-            from_=200,    # 200ms = rapide
-            to=2000,      # 2000ms = lent
-            orient='horizontal',
-            length=100,
-            label='Vitesse',
-            command=self.update_speed
+            self.speed_frame,
+            from_=200,
+            to=2000,
+            orient="horizontal",
+            length=150,
+            bg=COLORS["light"],
+            highlightthickness=0,
+            command=self.update_speed,
         )
-        self.speed_scale.set(1000)  # Valeur par défaut
-        self.speed_scale.grid(row=0, column=3, padx=5)
+        self.speed_scale.set(1000)
+        self.speed_scale.pack()
 
-        # Chargement du jeu
+        # Frame pour les scores avec style moderne
+        self.score_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
+        self.score_frame.pack(fill="x", pady=10)
+
+        self.score_labels = []
+        score_colors = [
+            COLORS["accent"],
+            COLORS["success"],
+            COLORS["warning"],
+            COLORS["danger"],
+        ]
+
+        for i in range(len(selected_ias)):
+            label = tk.Label(
+                self.score_frame,
+                text=f"Joueur {i+1}: 0 pts",
+                font=("Helvetica", 12),
+                fg=score_colors[i % len(score_colors)],
+                bg=COLORS["light"],
+            )
+            label.grid(row=0, column=i, padx=20)
+            self.score_labels.append(label)
+
+        # Initialisation du jeu
         self.game = charger_scenario(scenario)
         self.selected_ias = selected_ias
         self.ias = self._charger_IAs()
+        self.auto_play = False
+        self.auto_play_speed = 500
 
-        # Démarrage de l'affichage
+        # Premier affichage
         self.afficher_carte()
-
-        # Frame pour les scores en bas de l'écran
-        self.info_frame = tk.Frame(self.main_frame)
-        self.info_frame.pack(fill='x', pady=5)
-        
-        # Labels pour les scores avec plus d'espace entre eux
-        self.score_labels = []
-        label_colors = ["red", "blue", "green", "yellow"]
-        for i in range(len(selected_ias)):  # Utilise le nombre réel de joueurs
-            label = tk.Label(self.info_frame, text=f"Joueur {i+1}: 0 pts", 
-                           font=("Arial", 12), fg=label_colors[i])
-            label.grid(row=0, column=i, padx=20)  # Plus d'espace entre les labels
-            self.score_labels.append(label)
 
     def _charger_IAs(self):
         list_ia = []
@@ -190,16 +316,16 @@ class JeuBomberTK:
     def afficher_carte(self):
         self.canvas.delete("all")
         taille_case = 30
-        
+
         # Dessiner la grille de base
         for y, ligne in enumerate(self.game.carte):
             for x, case in enumerate(ligne):
                 # Coordonnées de la case
                 x1, y1 = x * taille_case, y * taille_case
                 x2, y2 = (x + 1) * taille_case, (y + 1) * taille_case
-                center_x = x1 + taille_case/2
-                center_y = y1 + taille_case/2
-                
+                center_x = x1 + taille_case / 2
+                center_y = y1 + taille_case / 2
+
                 # Couleur de fond par défaut
                 couleur = "white"
                 if case == "C":  # Mur
@@ -208,72 +334,90 @@ class JeuBomberTK:
                     couleur = "brown4"
                 elif case == "E":  # Ethernet
                     couleur = "deep sky blue"
-                
+
                 # Dessiner le fond de la case
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill=couleur, outline="black")
-                
+                self.canvas.create_rectangle(
+                    x1, y1, x2, y2, fill=couleur, outline="black"
+                )
+
                 # Dessiner les bombes
-                for bombe in self.game.bombes:  # Correction ici: utiliser self.game.bombes
+                for (
+                    bombe
+                ) in self.game.bombes:  # Correction ici: utiliser self.game.bombes
                     if bombe.position.x == x and bombe.position.y == y:
                         # Créer une bombe noire avec un cercle rouge au centre
-                        self.canvas.create_oval(x1+5, y1+5, x2-5, y2-5, fill="black")
                         self.canvas.create_oval(
-                            center_x-5, center_y-5,
-                            center_x+5, center_y+5,
-                            fill="red", outline="red"
+                            x1 + 5, y1 + 5, x2 - 5, y2 - 5, fill="black"
                         )
-                
+                        self.canvas.create_oval(
+                            center_x - 5,
+                            center_y - 5,
+                            center_x + 5,
+                            center_y + 5,
+                            fill="red",
+                            outline="red",
+                        )
+
                 # Dessiner les fantômes
                 for fantome in self.game.fantômes:
-                    if fantome.position.x == x and fantome.position.y == y:  # Correction ici aussi
+                    if (
+                        fantome.position.x == x and fantome.position.y == y
+                    ):  # Correction ici aussi
                         # Dessiner un fantôme en forme de pacman inversé
                         self.canvas.create_arc(
-                            x1+2, y1+2, x2-2, y2-2,
-                            start=30, extent=300,
-                            fill="lime green"
+                            x1 + 2,
+                            y1 + 2,
+                            x2 - 2,
+                            y2 - 2,
+                            start=30,
+                            extent=300,
+                            fill="lime green",
                         )
-                
+
                 # Dessiner les joueurs
                 for i, bomber in enumerate(self.game.bombers):
-                    if bomber.position.x == x and bomber.position.y == y and bomber.pv > 0:  # Correction ici aussi
+                    if (
+                        bomber.position.x == x
+                        and bomber.position.y == y
+                        and bomber.pv > 0
+                    ):  # Correction ici aussi
                         # Couleurs différentes pour chaque joueur
                         player_colors = ["red", "blue", "green", "yellow"]
                         color = player_colors[i % len(player_colors)]
-                        
+
                         # Dessiner le joueur comme un cercle
                         self.canvas.create_oval(
-                            x1+3, y1+3, x2-3, y2-3,
-                            fill=color, outline="black"
+                            x1 + 3, y1 + 3, x2 - 3, y2 - 3, fill=color, outline="black"
                         )
                         # Afficher les PV du joueur
                         self.canvas.create_text(
-                            center_x, center_y,
+                            center_x,
+                            center_y,
                             text=str(bomber.pv),
-                            fill="white", font=("Arial", 10, "bold")
+                            fill="white",
+                            font=("Arial", 10, "bold"),
                         )
 
         # Mettre à jour les labels de score au lieu de dessiner sur le canvas
         for i, bomber in enumerate(self.game.bombers):
             score_text = f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
             self.score_labels[i].config(
-                text=score_text,
-                fg=["red", "blue", "green", "yellow"][i % 4]
+                text=score_text, fg=["red", "blue", "green", "yellow"][i % 4]
             )
 
         # Si game over, afficher au centre
         if self.game.is_game_over():
             self.canvas.create_text(
-                400, 300,
-                text="Partie Terminée",
-                font=("Arial", 24),
-                fill="red"
+                400, 300, text="Partie Terminée", font=("Arial", 24), fill="red"
             )
 
         # Mise à jour des scores de manière sécurisée
         for i in range(len(self.score_labels)):
             if i < len(self.game.bombers):
                 bomber = self.game.bombers[i]
-                score_text = f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
+                score_text = (
+                    f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
+                )
                 self.score_labels[i].config(text=score_text)
             else:
                 self.score_labels[i].config(text=f"Joueur {i+1}: Éliminé")
@@ -294,7 +438,7 @@ class JeuBomberTK:
                     action = ia.action(self.game.to_dict())
                     sys.stdout.close()
                     sys.stdout = original_stdout
-                    
+
                     if action:
                         self.game.résoudre_action(j, action)
                 except Exception as e:
@@ -309,7 +453,7 @@ class JeuBomberTK:
 
         # Mise à jour de l'affichage
         self.afficher_carte()
-        
+
         # Vérifie les conditions de fin de partie uniquement en mode multijoueur
         if len(self.ias) > 1:  # Si plus d'un joueur
             alive_players = sum(1 for bomber in self.game.bombers if bomber.pv > 0)
@@ -327,10 +471,11 @@ class JeuBomberTK:
         self.btn_tour["state"] = "disabled"
         self.btn_auto["state"] = "disabled"
         self.canvas.create_text(
-            400, 300,
+            400,
+            300,
             text=f"Game Over - Joueur {player_index + 1} est mort!",
             font=("Arial", 24),
-            fill="red"
+            fill="red",
         )
         self.afficher_carte()
 
@@ -354,7 +499,7 @@ class JeuBomberTK:
         self.auto_play = False
         self.btn_tour["state"] = "disabled"
         self.btn_auto["state"] = "disabled"
-        
+
         # Trouver le gagnant
         max_score = -1
         winner = -1
@@ -365,23 +510,27 @@ class JeuBomberTK:
 
         if winner >= 0:
             self.canvas.create_text(
-                400, 300,
+                400,
+                300,
                 text=f"Partie Terminée - Joueur {winner + 1} gagne avec {max_score} points!",
                 font=("Arial", 24, "bold"),
-                fill="red"
+                fill="red",
             )
         else:
             self.canvas.create_text(
-                400, 300,
+                400,
+                300,
                 text="Partie Terminée - Égalité!",
                 font=("Arial", 24, "bold"),
-                fill="red"
+                fill="red",
             )
 
     def update_speed(self, value):
         """Met à jour la vitesse de défilement automatique"""
         self.auto_play_speed = int(value)
-        if self.auto_play:  # Si le défilement auto est actif, redémarrer avec la nouvelle vitesse
+        if (
+            self.auto_play
+        ):  # Si le défilement auto est actif, redémarrer avec la nouvelle vitesse
             self.toggle_auto_play()
             self.toggle_auto_play()
 
