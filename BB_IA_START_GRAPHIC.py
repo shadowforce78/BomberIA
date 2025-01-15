@@ -296,6 +296,12 @@ class JeuBomberTK:
         self.auto_play = False
         self.auto_play_speed = 500
 
+        # Initialisation des variables de timing
+        self.auto_play = False
+        self.auto_play_speed = 1000  # Valeur par défaut en millisecondes
+        self.last_auto_time = 0  # Pour tracker le dernier tour auto
+        self.auto_play_after_id = None  # Pour stocker l'id du dernier after()
+
         # Premier affichage
         self.afficher_carte()
 
@@ -461,10 +467,6 @@ class JeuBomberTK:
                 self.finir_partie()
                 return
 
-        # Continue le défilement automatique si activé
-        if self.auto_play and not self.game.is_game_over():
-            self.master.after(self.auto_play_speed, self.jouer_tour_auto)
-
     def game_over(self, player_index):
         """Affiche game over quand un joueur meurt"""
         self.auto_play = False
@@ -484,15 +486,24 @@ class JeuBomberTK:
         self.auto_play = not self.auto_play
         if self.auto_play:
             self.btn_auto.config(text="Arrêter Auto")
-            self.jouer_tour_auto()
+            # Démarrer le défilement automatique
+            self.last_auto_time = self.master.after_idle(self.jouer_tour_auto)
         else:
             self.btn_auto.config(text="Défilement Auto")
+            # Annuler le prochain tour auto s'il existe
+            if self.auto_play_after_id:
+                self.master.after_cancel(self.auto_play_after_id)
+                self.auto_play_after_id = None
 
     def jouer_tour_auto(self):
-        """Joue un tour automatiquement si auto_play est activé"""
+        """Joue un tour automatiquement avec une vitesse constante"""
         if self.auto_play and not self.game.is_game_over():
             self.jouer_tour()
-            self.master.after(self.auto_play_speed, self.jouer_tour_auto)
+            # Planifier le prochain tour avec un délai constant
+            self.auto_play_after_id = self.master.after(
+                self.auto_play_speed, 
+                self.jouer_tour_auto
+            )
 
     def finir_partie(self):
         """Gestion de la fin de partie"""
@@ -528,11 +539,14 @@ class JeuBomberTK:
     def update_speed(self, value):
         """Met à jour la vitesse de défilement automatique"""
         self.auto_play_speed = int(value)
-        if (
-            self.auto_play
-        ):  # Si le défilement auto est actif, redémarrer avec la nouvelle vitesse
-            self.toggle_auto_play()
-            self.toggle_auto_play()
+        # Redémarrer le défilement si actif pour appliquer la nouvelle vitesse
+        if self.auto_play:
+            if self.auto_play_after_id:
+                self.master.after_cancel(self.auto_play_after_id)
+            self.auto_play_after_id = self.master.after(
+                self.auto_play_speed,
+                self.jouer_tour_auto
+            )
 
 
 if __name__ == "__main__":
