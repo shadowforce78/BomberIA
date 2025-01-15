@@ -200,15 +200,37 @@ class JeuBomberTK:
         self.master.title("BomberBUT")
         self.master.configure(bg=COLORS["light"])
 
+        # Récupérer la taille de l'écran
+        screen_width = master.winfo_screenwidth()
+        screen_height = master.winfo_screenheight() 
+
+        # Initialisation du jeu avant la création du canvas
+        self.game = charger_scenario(scenario)
+        self.selected_ias = selected_ias
+        self.ias = self._charger_IAs()
+
+        # Calcul de la taille optimale du canvas en fonction de la map et de l'écran
+        game_width = len(self.game.carte[0])
+        game_height = len(self.game.carte)
+
+        # Taille maximale des cases en fonction de l'écran (80% de la plus petite dimension)
+        max_cell_width = int((screen_width * 0.8) / game_width)
+        max_cell_height = int((screen_height * 0.8) / game_height)
+        self.taille_case = min(max_cell_width, max_cell_height, 50)  # Maximum 50 pixels
+
+        # Dimensions finales du canvas
+        canvas_width = game_width * self.taille_case
+        canvas_height = game_height * self.taille_case
+
         # Frame principale avec padding
         self.main_frame = tk.Frame(master, bg=COLORS["light"])
         self.main_frame.pack(padx=20, pady=20)
 
-        # Canvas avec bordure moderne
+        # Canvas avec bordure moderne et taille adaptée
         self.canvas = tk.Canvas(
             self.main_frame,
-            width=800,
-            height=600,
+            width=canvas_width,
+            height=canvas_height,
             bg=COLORS["light"],
             highlightthickness=1,
             highlightbackground=COLORS["accent"],
@@ -289,6 +311,13 @@ class JeuBomberTK:
             label.grid(row=0, column=i, padx=20)
             self.score_labels.append(label)
 
+        # Centrer la fenêtre
+        window_width = canvas_width + 40  # +40 pour le padding
+        window_height = canvas_height + 200  # +200 pour les contrôles et scores
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.master.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
         # Initialisation du jeu
         self.game = charger_scenario(scenario)
         self.selected_ias = selected_ias
@@ -322,16 +351,15 @@ class JeuBomberTK:
 
     def afficher_carte(self):
         self.canvas.delete("all")
-        taille_case = 30
 
-        # Dessiner la grille de base
+        # Utiliser la taille de case calculée
         for y, ligne in enumerate(self.game.carte):
             for x, case in enumerate(ligne):
                 # Coordonnées de la case
-                x1, y1 = x * taille_case, y * taille_case
-                x2, y2 = (x + 1) * taille_case, (y + 1) * taille_case
-                center_x = x1 + taille_case / 2
-                center_y = y1 + taille_case / 2
+                x1, y1 = x * self.taille_case, y * self.taille_case
+                x2, y2 = (x + 1) * self.taille_case, (y + 1) * self.taille_case
+                center_x = x1 + self.taille_case / 2
+                center_y = y1 + self.taille_case / 2
 
                 # Couleur de fond par défaut
                 couleur = "white"
