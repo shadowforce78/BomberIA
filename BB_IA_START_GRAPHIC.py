@@ -129,7 +129,7 @@ class JeuBomberTK:
 
         # Ajout d'une variable pour tracker l'état du défilement automatique
         self.auto_play = False
-        self.auto_play_speed = 500  # 500ms = 2 tours par seconde
+        self.auto_play_speed = 1000  # 1000ms = 1 seconde par tour
         
         # Ajout du bouton de défilement automatique dans control_frame
         self.btn_auto = tk.Button(
@@ -138,6 +138,19 @@ class JeuBomberTK:
             command=self.toggle_auto_play
         )
         self.btn_auto.grid(row=0, column=2, padx=5)
+
+        # Ajout d'un slider pour contrôler la vitesse
+        self.speed_scale = tk.Scale(
+            self.control_frame,
+            from_=200,    # 200ms = rapide
+            to=2000,      # 2000ms = lent
+            orient='horizontal',
+            length=100,
+            label='Vitesse',
+            command=self.update_speed
+        )
+        self.speed_scale.set(1000)  # Valeur par défaut
+        self.speed_scale.grid(row=0, column=3, padx=5)
 
         # Chargement du jeu
         self.game = charger_scenario(scenario)
@@ -272,11 +285,8 @@ class JeuBomberTK:
             return
 
         # Faire jouer chaque IA
-        alive_players = 0
         for j, ia in enumerate(self.ias):
-            # Vérifier si le joueur existe encore dans la liste des bombers
             if j < len(self.game.bombers) and self.game.bombers[j].pv > 0:
-                alive_players += 1
                 action = None
                 try:
                     original_stdout = sys.stdout
@@ -300,10 +310,12 @@ class JeuBomberTK:
         # Mise à jour de l'affichage
         self.afficher_carte()
         
-        # Vérifie les conditions de fin de partie
-        if alive_players <= 1 or self.game.is_game_over():
-            self.finir_partie()
-            return
+        # Vérifie les conditions de fin de partie uniquement en mode multijoueur
+        if len(self.ias) > 1:  # Si plus d'un joueur
+            alive_players = sum(1 for bomber in self.game.bombers if bomber.pv > 0)
+            if alive_players <= 1:
+                self.finir_partie()
+                return
 
         # Continue le défilement automatique si activé
         if self.auto_play and not self.game.is_game_over():
@@ -365,6 +377,13 @@ class JeuBomberTK:
                 font=("Arial", 24, "bold"),
                 fill="red"
             )
+
+    def update_speed(self, value):
+        """Met à jour la vitesse de défilement automatique"""
+        self.auto_play_speed = int(value)
+        if self.auto_play:  # Si le défilement auto est actif, redémarrer avec la nouvelle vitesse
+            self.toggle_auto_play()
+            self.toggle_auto_play()
 
 
 if __name__ == "__main__":
