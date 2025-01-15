@@ -304,6 +304,7 @@ class JeuBomberTK:
 
         # Premier affichage
         self.afficher_carte()
+        self.game_over_happened = False  # Nouvelle variable pour tracker le game over
 
     def _charger_IAs(self):
         list_ia = []
@@ -447,13 +448,22 @@ class JeuBomberTK:
 
                     if action:
                         self.game.résoudre_action(j, action)
+                        # Vérifier si le bomber est mort après l'action
+                        if self.game.bombers[j].pv == 0:
+                            self.game_over(j)
+                            return
                 except Exception as e:
                     print(f"Erreur pour le joueur {j}: {str(e)}")
                     continue
 
-        # Phase non-joueur
+        # Phase non-joueur  
         try:
             self.game.phase_non_joueur()
+            # Vérifier si un bomber est mort pendant la phase non-joueur
+            for j, bomber in enumerate(self.game.bombers):
+                if bomber.pv == 0 and not self.game_over_happened:
+                    self.game_over(j)
+                    return
         except Exception as e:
             print(f"Erreur dans la phase non-joueur: {str(e)}")
 
@@ -469,16 +479,28 @@ class JeuBomberTK:
 
     def game_over(self, player_index):
         """Affiche game over quand un joueur meurt"""
+        self.game_over_happened = True  # Marque que le game over a eu lieu
         self.auto_play = False
         self.btn_tour["state"] = "disabled"
         self.btn_auto["state"] = "disabled"
+        
+        # Affichage du message game over
         self.canvas.create_text(
-            400,
-            300,
+            400, 300,
             text=f"Game Over - Joueur {player_index + 1} est mort!",
             font=("Arial", 24),
-            fill="red",
+            fill=COLORS["danger"]
         )
+        
+        # Afficher le score final
+        score_text = f"Score final: {self.game.scores[player_index]} points"
+        self.canvas.create_text(
+            400, 350,
+            text=score_text,
+            font=("Arial", 18),
+            fill=COLORS["text"]
+        )
+        
         self.afficher_carte()
 
     def toggle_auto_play(self):
