@@ -123,12 +123,13 @@ def partie(noms_des_joueurs: list[str], scenario: str):
         print(f"Joueur {j+1} ({noms_des_joueurs[j]}): {game.scores[j]} points")
 
     game.log("game_over")
+    game.log(f"vie {game.bombers[0].pv}")
     game.log(f"scores {game.scores}")
 
 
 if __name__ == "__main__":
     # Test sur battle0.txt (4 joueurs)
-    partie(["IA_2"], "maps/training0.txt")
+    partie(["IA_2"], "maps/training1.txt")
 
     # Test sur battle1.txt (4 joueurs)
     # partie(['IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL'], "maps/battle0.txt")
