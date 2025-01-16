@@ -131,6 +131,8 @@ class IA_Bomber:
             self.path_index = 0
 
         self.moves = []  # Add this line to store moves
+        self.backtracking = False  # Add tracking for backtrack state
+        self.backtrack_moves = []  # Store the sequence of moves to backtrack
         
         def get_reverse_direction(direction):
             if direction == "H": return "B"
@@ -138,10 +140,19 @@ class IA_Bomber:
             if direction == "G": return "D"
             if direction == "D": return "G"
             return "N"
+        
+        self.get_reverse_direction = get_reverse_direction
 
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
+        
+        # If we're currently backtracking, continue with backtrack moves
+        if self.backtracking:
+            if self.backtrack_moves:
+                return self.backtrack_moves.pop()
+            else:
+                self.backtracking = False  # Done backtracking
         
         # Check if we're next to a minerai
         minerais = self.get_minerais(self, game_dict["map"])
@@ -149,9 +160,14 @@ class IA_Bomber:
             closest_minerai = minerais[0]
             if self.get_min_distance(self.position, closest_minerai) == 1:
                 move = "X"
-                self.moves.append(move)  # Store the move
+                self.moves.append(move)
+                # Prepare backtrack moves
+                moves_to_reverse = self.moves[-4:-1] if len(self.moves) >= 4 else self.moves[:-1]
+                self.backtrack_moves = [self.get_reverse_direction(m) for m in reversed(moves_to_reverse)]
+                self.backtracking = True
                 return move
-        
+
+        # Continue with normal pathfinding if not backtracking
         if not self.current_path or self.path_index >= len(self.current_path):
             if minerais:
                 self.current_path = self.find_path(self, self.position, minerais[0], game_dict["map"])
