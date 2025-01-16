@@ -59,53 +59,94 @@ class IA_Bomber:
 
         self.get_minerais = get_minerais
 
-        minerai = get_minerais(self, self.map)
-        distance = get_min_distance(self.position, minerai[0])
+        # Ajout des fonctions de pathfinding
+        def get_neighbors(self, pos, map):
+            neighbors = []
+            directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Bas, Haut, Droite, Gauche
+            for dx, dy in directions:
+                new_x, new_y = pos[0] + dx, pos[1] + dy
+                if (0 <= new_y < len(map) and 
+                    0 <= new_x < len(map[0]) and 
+                    map[new_y][new_x] != 'C'):
+                    neighbors.append((new_x, new_y))
+            return neighbors
 
-        def is_on_same_line(self, pos1, pos2):
-            return pos1[0] == pos2[0] or pos1[1] == pos2[1]
+        self.get_neighbors = get_neighbors
 
-        same_line = is_on_same_line(self, self.position, minerai[0])
+        def heuristic(self, pos1, pos2):
+            return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
-        def get_obstacle(self, pos1, pos2, map):
-            if pos1[0] == pos2[0]:
-                for y in range(min(pos1[1], pos2[1]), max(pos1[1], pos2[1])):
-                    if map[y][pos1[0]] == "C":
-                        return True
-            else:
-                for x in range(min(pos1[0], pos2[0]), max(pos1[0], pos2[0])):
-                    if map[pos1[1]][x] == "C":
-                        return True
-            return False
+        self.heuristic = heuristic
 
-        if same_line:
-            if not get_obstacle(self, self.position, minerai[0], self.map):
-                if self.position[0] == minerai[0][0]:
-                    if self.position[1] > minerai[0][1]:
-                        self.direction = "H"
-                    else:
-                        self.direction = "B"
-                else:
-                    if self.position[0] > minerai[0][0]:
-                        self.direction = "G"
-                    else:
-                        self.direction = "D"
-                print(
-                    f"Direction: {self.direction} sur la même ligne de {self.position} à {minerai[0]} en {distance} cases"
-                )
-            else:
-                self.direction = "N"
-                print(f"Obstacle detected between {self.position} and {minerai[0]}")
+        def find_path(self, start, goal, map):
+            from heapq import heappush, heappop
+            frontier = []
+            heappush(frontier, (0, start))
+            came_from = {start: None}
+            cost_so_far = {start: 0}
+
+            while frontier:
+                current = heappop(frontier)[1]
+                
+                if current == goal:
+                    break
+
+                for next_pos in self.get_neighbors(self, current, map):
+                    new_cost = cost_so_far[current] + 1
+                    if next_pos not in cost_so_far or new_cost < cost_so_far[next_pos]:
+                        cost_so_far[next_pos] = new_cost
+                        priority = new_cost + self.heuristic(self, goal, next_pos)
+                        heappush(frontier, (priority, next_pos))
+                        came_from[next_pos] = current
+
+            # Reconstruction du chemin
+            path = []
+            current = goal
+            while current is not None:
+                path.append(current)
+                current = came_from.get(current)
+            path.reverse()
+            return path if path[0] == start else []
+
+        self.find_path = find_path
+
+        def get_direction(self, current_pos, next_pos):
+            dx = next_pos[0] - current_pos[0]
+            dy = next_pos[1] - current_pos[1]
+            if dx == 1: return "D"
+            if dx == -1: return "G"
+            if dy == 1: return "B"
+            if dy == -1: return "H"
+            return "N"
+
+        self.get_direction = get_direction
+
+        # Initialisation du chemin
+        minerais = self.get_minerais(self, self.map)
+        if minerais:
+            self.current_path = self.find_path(self, self.position, minerais[0], self.map)
+            self.path_index = 1 if len(self.current_path) > 1 else 0
+        else:
+            self.current_path = []
+            self.path_index = 0
 
     def action(self, game_dict: dict) -> str:
-        """Appelé à chaque décision du joueur IA
+        """Appelé à chaque décision du joueur IA"""
+        self.position = game_dict["bombers"][self.num_joueur]["position"]
+        
+        if not self.current_path or self.path_index >= len(self.current_path):
+            # Recalcul du chemin si nécessaire
+            minerais = self.get_minerais(self, game_dict["map"])
+            if minerais:
+                self.current_path = self.find_path(self, self.position, minerais[0], game_dict["map"])
+                self.path_index = 1 if len(self.current_path) > 1 else 0
+            else:
+                return "N"
 
-        Args:
-            game_dict (dict) : décrit l'état actuel de la partie au moment
-            où le joueur doit décider son action
-
-        Returns:
-            str : une action
-        """
+        if self.path_index < len(self.current_path):
+            next_pos = self.current_path[self.path_index]
+            direction = self.get_direction(self, self.position, next_pos)
+            self.path_index += 1
+            return direction
 
         return "N"
