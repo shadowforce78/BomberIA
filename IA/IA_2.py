@@ -1,28 +1,7 @@
-##############################################################################
-# votre IA : à vous de coder
-# Rappel : ne pas changer les paramètres des méthodes
-# vous pouvez ajouter librement méthodes, fonctions, champs, ...
-##############################################################################
-
-# H, B, G, D, X, N
-# Haut, Bas, Gauche, Droite, Bombe, Ne rien faire
-
-
-import random
-
-
 class IA_Bomber:
     def __init__(
         self, num_joueur: int, game_dic: dict, timerglobal: int, timerfantôme: int
     ) -> None:
-        """génère l'objet de la classe IA_Bomber
-
-        Args:
-            num_joueur (int): numéro de joueur attribué à l'IA
-            game_dic (dict): descriptif de l'état initial de la partie
-        """
-        print(game_dic)
-
         self.num_joueur = num_joueur
         self.map = game_dic["map"]
         self.bombers = game_dic["bombers"]
@@ -32,192 +11,108 @@ class IA_Bomber:
         self.scores = game_dic["scores"]
         self.timerglobal = timerglobal
         self.timerfantôme = timerfantôme
-
-        # Get current position
-        position = self.get_position()
-
-        # Get minerais
-        minerais = self.get_minerais()
-
-        # Display information
-        self.display_info()
+        self.last_bomb_position = None
+        self.bomb_timer = 0
+        self.escape_route = None
 
     def get_position(self) -> tuple:
-        """Retourne la position du bomber"""
         for bomber in self.bombers:
             if bomber["num_joueur"] == self.num_joueur:
                 return bomber["position"]
         return None
 
-    def get_min_distance(self, pos1: tuple, pos2: tuple) -> int:
-        """Calcule la distance de Manhattan entre deux points"""
-        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-
-    def flood_fill(self, pos: tuple, target: str) -> list:
-        """Remplit une zone de cases vides en partant d'une position"""
-        # Get the dimensions of the map
-        width = len(self.map[0])
-        height = len(self.map)
-
-        # Initialize the queue
-        queue = [pos]
-
-        # Initialize the visited set
-        visited = set()
-
-        # Initialize the result set
-        result = []
-
-        # While the queue is not empty
-        while queue:
-            # Get the current position
-            current = queue.pop(0)
-
-            # If the current position is not visited
-            if current not in visited:
-                # Mark the current position as visited
-                visited.add(current)
-
-                # Add the current position to the result set
-                result.append(current)
-
-                # Get the neighbors of the current position
-                neighbors = [
-                    (current[0] - 1, current[1]),
-                    (current[0] + 1, current[1]),
-                    (current[0], current[1] - 1),
-                    (current[0], current[1] + 1),
-                ]
-
-                # For each neighbor
-                for neighbor in neighbors:
-                    # If the neighbor is within the bounds of the map
-                    if 0 <= neighbor[0] < width and 0 <= neighbor[1] < height:
-                        # If the neighbor is empty
-                        if self.map[neighbor[1]][neighbor[0]] == target:
-                            # Add the neighbor to the queue
-                            queue.append(neighbor)
-
-        # Return the result set
-        return result
-
-    def get_empty_cells(self) -> list:
-        """Retourne la liste des positions des cases vides"""
-        empty_cells = []
-        for i in range(len(self.map)):
-            for j in range(len(self.map[i])):
-                if self.map[i][j] == " ":
-                    empty_cells.append((j, i))  # Note: returning (x,y) coordinates
-        return empty_cells
-
     def get_minerais(self) -> list:
-        """Retourne la liste des positions des minerais"""
         minerais = []
-        for i in range(len(self.map)):
-            for j in range(len(self.map[i])):
-                if self.map[i][j] == "M":
-                    minerais.append((j, i))  # Note: returning (x,y) coordinates
+        for y in range(len(self.map)):
+            for x in range(len(self.map[y])):
+                if self.map[y][x] == "M":
+                    minerais.append((x, y))
         return minerais
 
-    def draw_map_with_path(self, path: list) -> None:
-        """Dessine la carte avec un chemin tracé"""
-        # Copy the map
-        map_with_path = [list(row) for row in self.map]
+    def is_position_safe(self, pos: tuple) -> bool:
+        x, y = pos
+        if not (0 <= x < len(self.map[0]) and 0 <= y < len(self.map)):
+            return False
+        return self.map[y][x] in [" ", "U"]
 
-        # Draw the path on the map
-        for pos in path:
-            x, y = pos
-            map_with_path[y][x] = "O"
+    def is_in_bomb_range(self, pos: tuple, bomb_pos: tuple, portée: int = 3) -> bool:
+        x, y = pos
+        bx, by = bomb_pos
+        return (x == bx and abs(y - by) <= portée) or (
+            y == by and abs(x - bx) <= portée
+        )
 
-        # Print the map with the path
-        for row in map_with_path:
-            print("".join(row))
-
-    # Affiche toutes les informations de la partie (minerais accessible, distance...)
-    def display_info(self):
-        print("Position du bomber:", self.get_position())
-        print("Minerais:", self.get_minerais())
-        print("Distance de Manhattan:", self.get_min_distance((0, 0), (3, 4)))
-        print("Cases vides:", self.get_empty_cells())
-        # Flood fill a partir de la position du bomber
-        print("Flood fill:", self.flood_fill(self.get_position(), " "))
-        print("Map avec chemin:")
-        self.draw_map_with_path(self.flood_fill(self.get_position(), " "))
-
-    def move(self, direction: str) -> str:
-        """Déplace le bomber dans une direction"""
-        # Get the current position
-        position = self.get_position()
-
-        # Get the new position
-        new_position = None
-        if direction == "H":
-            new_position = (position[0], position[1] - 1)
-        elif direction == "B":
-            new_position = (position[0], position[1] + 1)
-        elif direction == "G":
-            new_position = (position[0] - 1, position[1])
-        elif direction == "D":
-            new_position = (position[0] + 1, position[1])
-
-        # Check if the new position is within the bounds of the map
-        if 0 <= new_position[0] < len(self.map[0]) and 0 <= new_position[1] < len(
-            self.map
-        ):
-            # Check if the new position is empty
-            if (
-                self.map[new_position[1]][new_position[0]] == " "
-            ):  # Note: using (x,y) coordinates
-
-                # Update the map
-                self.map[position[1]][position[0]] = " "
-                self.map[new_position[1]][new_position[0]] = "B"
-
-    def is_in_blast_range(self, position: tuple, bomb_position: tuple) -> bool:
-        """Vérifie si une position est dans la zone d'explosion d'une bombe (croix de range 2)"""
-        x, y = position
-        bx, by = bomb_position
-
-        # Vérification horizontale
-        if y == by and abs(x - bx) <= 2:
-            return True
-        # Vérification verticale
-        if x == bx and abs(y - by) <= 2:
-            return True
-        return False
-
-    def find_safe_direction(self, position: tuple, bomb_position: tuple) -> str:
-        """Trouve une direction sûre pour s'éloigner d'une bombe"""
-        # Tester toutes les directions possibles
-        directions = [
-            ("H", (position[0], position[1] - 1)),
-            ("B", (position[0], position[1] + 1)),
-            ("G", (position[0] - 1, position[1])),
-            ("D", (position[0] + 1, position[1])),
+    def get_escape_directions(self, pos: tuple) -> list:
+        x, y = pos
+        safe_directions = []
+        moves = [
+            ("H", (x, y - 1)),
+            ("B", (x, y + 1)),
+            ("G", (x - 1, y)),
+            ("D", (x + 1, y)),
         ]
 
-        safe_moves = []
-        for direction, new_pos in directions:
-            # Vérifier si la position est dans la carte et si la case est vide
-            if (
-                0 <= new_pos[0] < len(self.map[0])
-                and 0 <= new_pos[1] < len(self.map)
-                and self.map[new_pos[1]][new_pos[0]] == " "
-                and not self.is_in_blast_range(new_pos, bomb_position)
-            ):
-                # Calculer la distance par rapport à la position dangereuse
-                distance = self.get_min_distance(new_pos, bomb_position)
-                safe_moves.append((distance, direction))
+        for direction, new_pos in moves:
+            if self.is_position_safe(new_pos):
+                # Vérifier si la nouvelle position est hors de portée de toutes les bombes
+                is_safe = True
+                for bombe in self.bombes:
+                    if self.is_in_bomb_range(
+                        new_pos, bombe["position"], bombe["portée"]
+                    ):
+                        is_safe = False
+                        break
+                if is_safe:
+                    safe_directions.append(direction)
 
-        # Retourner la direction qui nous éloigne le plus du danger
-        if safe_moves:
-            safe_moves.sort(reverse=True)  # Trier par distance décroissante
-            return safe_moves[0][1]
-        return "N"
+        return safe_directions
+
+    def should_place_bomb(self, pos: tuple) -> bool:
+        x, y = pos
+        # Vérifier la présence de minerai adjacent
+        adjacent = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        for ax, ay in adjacent:
+            if 0 <= ax < len(self.map[0]) and 0 <= ay < len(self.map):
+                if self.map[ay][ax] == "M":
+                    # Vérifier s'il existe une route d'échappement
+                    escape_routes = self.get_escape_directions(pos)
+                    return len(escape_routes) > 0
+        return False
+
+    def get_min_distance(self, pos1, pos2):
+        """Calculate Manhattan distance between two positions."""
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def get_best_move_to_target(self, current: tuple, target: tuple) -> str:
+        cx, cy = current
+        tx, ty = target
+
+        # Priorité au mouvement qui nous rapproche le plus de la cible
+        if abs(tx - cx) > abs(ty - cy):
+            if tx > cx and self.is_position_safe((cx + 1, cy)):
+                return "D"
+            elif tx < cx and self.is_position_safe((cx - 1, cy)):
+                return "G"
+            elif ty > cy and self.is_position_safe((cx, cy + 1)):
+                return "B"
+            elif ty < cy and self.is_position_safe((cx, cy - 1)):
+                return "H"
+        else:
+            if ty > cy and self.is_position_safe((cx, cy + 1)):
+                return "B"
+            elif ty < cy and self.is_position_safe((cx, cy - 1)):
+                return "H"
+            elif tx > cx and self.is_position_safe((cx + 1, cy)):
+                return "D"
+            elif tx < cx and self.is_position_safe((cx - 1, cy)):
+                return "G"
+
+        # Si aucun mouvement direct n'est possible, essayer n'importe quelle direction sûre
+        safe_directions = self.get_escape_directions((cx, cy))
+        return safe_directions[0] if safe_directions else "N"
 
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
-
         # Mise à jour des informations de la partie
         self.map = game_dict["map"]
         self.bombers = game_dict["bombers"]
@@ -230,6 +125,13 @@ class IA_Bomber:
         if not position:
             return "N"
 
+        # S'éloigner des bombes existantes
+        for bombe in self.bombes:
+            if self.get_min_distance(position, bombe["position"]) <= 2:
+                safe_direction = self.find_safe_direction(position, bombe["position"])
+                if safe_direction != "N":
+                    return safe_direction
+
         # Récupération des minerais
         minerais = self.get_minerais()
         if not minerais:
@@ -238,26 +140,6 @@ class IA_Bomber:
         # Trouver le minerai le plus proche
         minerai_proche = min(minerais, key=lambda m: self.get_min_distance(position, m))
 
-        # Si adjacent à un minerai, poser une bombe
+        # Si adjacent à un minerai, vérifier d'abord une route d'échappement
         if self.get_min_distance(position, minerai_proche) == 1:
-            safe_direction = self.find_safe_direction(position, position)
-            if safe_direction != "N":
-                return safe_direction
-            else:
-                return "N"
-
-        # Sinon, se déplacer vers le minerai le plus proche
-        dx = minerai_proche[0] - position[0]
-        dy = minerai_proche[1] - position[1]
-
-        # Déplacement prioritaire sur l'axe avec la plus grande distance
-        if abs(dx) > abs(dy):
-            if dx > 0:
-                return "D"
-            else:
-                return "G"
-        else:
-            if dy > 0:
-                return "B"
-            else:
-                return "H"
+            safe_direction = self.find_safe

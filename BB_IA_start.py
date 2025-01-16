@@ -59,7 +59,7 @@ def partie(noms_des_joueurs: list[str], scenario: str):
     while not game_over:
         game.log("début_tour " + str(game.compteur_tour))
         print(f"\n=== Tour {game.compteur_tour} ===")
-        print(game.to_dict())
+        # print(game.to_dict())
 
         # phase joueurs
         for j in range(nb_joueurs):
@@ -81,7 +81,7 @@ def partie(noms_des_joueurs: list[str], scenario: str):
                 if action == "X":
                     derniere_bombe[j] = position_actuelle
                     print(
-                        f"⚠️ Joueur {j+1} pose une bombe à la position {position_actuelle}"
+                        f"Joueur {j+1} pose une bombe à la position {position_actuelle}"
                     )
 
         # phase non joueur
@@ -105,11 +105,11 @@ def partie(noms_des_joueurs: list[str], scenario: str):
 
                 if tueur is not None:
                     print(
-                        f"💀 Joueur {j+1} ({noms_des_joueurs[j]}) a été éliminé par Joueur {tueur+1} ({noms_des_joueurs[tueur]})!"
+                        f"Joueur {j+1} ({noms_des_joueurs[j]}) a été éliminé par Joueur {tueur+1} ({noms_des_joueurs[tueur]})!"
                     )
                 else:
                     print(
-                        f"💀 Joueur {j+1} ({noms_des_joueurs[j]}) a été éliminé par un fantôme!"
+                        f"Joueur {j+1} ({noms_des_joueurs[j]}) a été éliminé par un fantôme!"
                     )
 
         # Mettre à jour les PV précédents
@@ -131,7 +131,7 @@ def partie(noms_des_joueurs: list[str], scenario: str):
 
 if __name__ == "__main__":
     # Test sur battle0.txt (4 joueurs)
-    partie(["IA_2"], "maps/training0.txt")
+    partie(["IA_3"], "maps/training0.txt")
 
     # Test sur battle1.txt (4 joueurs)
     # partie(['IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL'], "maps/battle0.txt")
