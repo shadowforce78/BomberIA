@@ -130,23 +130,44 @@ class IA_Bomber:
             self.current_path = []
             self.path_index = 0
 
+        self.moves = []  # Add this line to store moves
+        
+        def get_reverse_direction(direction):
+            if direction == "H": return "B"
+            if direction == "B": return "H"
+            if direction == "G": return "D"
+            if direction == "D": return "G"
+            return "N"
+
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
         
+        # Check if we're next to a minerai
+        minerais = self.get_minerais(self, game_dict["map"])
+        if minerais:
+            closest_minerai = minerais[0]
+            if self.get_min_distance(self.position, closest_minerai) == 1:
+                move = "X"
+                self.moves.append(move)  # Store the move
+                return move
+        
         if not self.current_path or self.path_index >= len(self.current_path):
-            # Recalcul du chemin si nécessaire
-            minerais = self.get_minerais(self, game_dict["map"])
             if minerais:
                 self.current_path = self.find_path(self, self.position, minerais[0], game_dict["map"])
                 self.path_index = 1 if len(self.current_path) > 1 else 0
             else:
-                return "N"
+                move = "N"
+                self.moves.append(move)  # Store the move
+                return move
 
         if self.path_index < len(self.current_path):
             next_pos = self.current_path[self.path_index]
             direction = self.get_direction(self, self.position, next_pos)
             self.path_index += 1
+            self.moves.append(direction)  # Store the move
             return direction
 
-        return "N"
+        move = "N"
+        self.moves.append(move)  # Store the move
+        return move
