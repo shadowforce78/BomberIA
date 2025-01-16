@@ -173,26 +173,42 @@ class IA_Bomber:
                 self.map[position[1]][position[0]] = " "
                 self.map[new_position[1]][new_position[0]] = "B"
 
-    def find_safe_direction(self, position: tuple, danger_position: tuple) -> str:
-        """Trouve une direction sûre pour s'éloigner d'une position dangereuse"""
+    def is_in_blast_range(self, position: tuple, bomb_position: tuple) -> bool:
+        """Vérifie si une position est dans la zone d'explosion d'une bombe (croix de range 2)"""
+        x, y = position
+        bx, by = bomb_position
+
+        # Vérification horizontale
+        if y == by and abs(x - bx) <= 2:
+            return True
+        # Vérification verticale
+        if x == bx and abs(y - by) <= 2:
+            return True
+        return False
+
+    def find_safe_direction(self, position: tuple, bomb_position: tuple) -> str:
+        """Trouve une direction sûre pour s'éloigner d'une bombe"""
         # Tester toutes les directions possibles
         directions = [
             ("H", (position[0], position[1] - 1)),
             ("B", (position[0], position[1] + 1)),
             ("G", (position[0] - 1, position[1])),
-            ("D", (position[0] + 1, position[1]))
+            ("D", (position[0] + 1, position[1])),
         ]
-        
+
         safe_moves = []
         for direction, new_pos in directions:
             # Vérifier si la position est dans la carte et si la case est vide
-            if (0 <= new_pos[0] < len(self.map[0]) and 
-                0 <= new_pos[1] < len(self.map) and 
-                self.map[new_pos[1]][new_pos[0]] == " "):
+            if (
+                0 <= new_pos[0] < len(self.map[0])
+                and 0 <= new_pos[1] < len(self.map)
+                and self.map[new_pos[1]][new_pos[0]] == " "
+                and not self.is_in_blast_range(new_pos, bomb_position)
+            ):
                 # Calculer la distance par rapport à la position dangereuse
-                distance = self.get_min_distance(new_pos, danger_position)
+                distance = self.get_min_distance(new_pos, bomb_position)
                 safe_moves.append((distance, direction))
-        
+
         # Retourner la direction qui nous éloigne le plus du danger
         if safe_moves:
             safe_moves.sort(reverse=True)  # Trier par distance décroissante
@@ -200,15 +216,8 @@ class IA_Bomber:
         return "N"
 
     def action(self, game_dict: dict) -> str:
-        """Appelé à chaque décision du joueur IA
+        """Appelé à chaque décision du joueur IA"""
 
-        Args:
-            game_dict (dict) : décrit l'état actuel de la partie au moment
-            où le joueur doit décider son action
-
-        Returns:
-            str : une action
-        """
         # Mise à jour des informations de la partie
         self.map = game_dict["map"]
         self.bombers = game_dict["bombers"]
@@ -218,45 +227,37 @@ class IA_Bomber:
 
         # Récupération de la position actuelle
         position = self.get_position()
+        if not position:
+            return "N"
 
         # Récupération des minerais
         minerais = self.get_minerais()
-
-        # Si une bombe est posée (incluant les nôtres), s'éloigner pour éviter les dégâts
-        for bombe in self.bombes:
-            bombe_position = bombe["position"]
-            if self.get_min_distance(position, bombe_position) <= bombe["portée"]:
-                return self.find_safe_direction(position, bombe_position)
-
-        # Si aucun minerai n'est disponible, ne rien faire
         if not minerais:
             return "N"
 
         # Trouver le minerai le plus proche
-        distances = [(self.get_min_distance(position, minerai), minerai) for minerai in minerais]
-        distances.sort()
-        cible = distances[0][1]
+        minerai_proche = min(minerais, key=lambda m: self.get_min_distance(position, m))
 
-        # Si adjacent à un minerai, poser une bombe et immédiatement s'éloigner
-        if self.get_min_distance(position, cible) == 1:
-            # Vérifier d'abord si on a une direction sûre pour s'échapper
-            safe_direction = self.find_safe_direction(position, position)  # s'éloigner de notre position actuelle
+        # Si adjacent à un minerai, poser une bombe
+        if self.get_min_distance(position, minerai_proche) == 1:
+            safe_direction = self.find_safe_direction(position, position)
             if safe_direction != "N":
-                return "X"  # Poser la bombe car on a une échappatoire
+                return safe_direction
+            else:
+                return "N"
 
-        # Continuer le mouvement vers le minerai le plus proche
-        dx = cible[0] - position[0]
-        dy = cible[1] - position[1]
+        # Sinon, se déplacer vers le minerai le plus proche
+        dx = minerai_proche[0] - position[0]
+        dy = minerai_proche[1] - position[1]
 
+        # Déplacement prioritaire sur l'axe avec la plus grande distance
         if abs(dx) > abs(dy):
-            if dx > 0 and self.map[position[1]][position[0] + 1] == " ":
+            if dx > 0:
                 return "D"
-            elif dx < 0 and self.map[position[1]][position[0] - 1] == " ":
+            else:
                 return "G"
         else:
-            if dy > 0 and self.map[position[1] + 1][position[0]] == " ":
+            if dy > 0:
                 return "B"
-            elif dy < 0 and self.map[position[1] - 1][position[0]] == " ":
+            else:
                 return "H"
-
-        return "N"
