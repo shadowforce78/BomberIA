@@ -144,12 +144,12 @@ class IA_Bomber:
         def find_safe_spot(self, pos, map):
             # Check positions at least 3 cells away for better safety
             safe_spots = []
-            search_range = 4  # Increased search range
+            search_range = 5  # Augmenté à 5
             for y in range(max(0, pos[1] - search_range), min(len(map), pos[1] + search_range + 1)):
                 for x in range(max(0, pos[0] - search_range), min(len(map[0]), pos[0] + search_range + 1)):
                     if (map[y][x] != 'C' and 
                         (x, y) != pos and 
-                        abs(x - pos[0]) + abs(y - pos[1]) >= 3):  # Increased minimum distance
+                        abs(x - pos[0]) + abs(y - pos[1]) >= 5):  # Augmenté à 5
                         safe_spots.append((x, y))
             return min(safe_spots, key=lambda p: self.get_min_distance(pos, p), default=None)
             
@@ -184,9 +184,12 @@ class IA_Bomber:
                 if self.get_min_distance(pos, ghost["position"]) <= 4:  # Distance de sécurité augmentée
                     return False
 
-            # Vérification des bombes
+            # Vérification des bombes avec distance de sécurité augmentée
             for bomb in game_dict["bombes"]:
-                if self.get_min_distance(pos, bomb["position"]) < 4:  # Distance de sécurité augmentée
+                bomb_pos = bomb["position"]
+                if ((pos[0] == bomb_pos[0] and abs(pos[1] - bomb_pos[1]) <= 5) or  # Augmenté à 5
+                   (pos[1] == bomb_pos[1] and abs(pos[0] - bomb_pos[0]) <= 5) or  # Augmenté à 5
+                   self.get_min_distance(pos, bomb_pos) < 5):  # Augmenté à 5
                     return False
                     
             # Éviter les autres bombers
@@ -226,6 +229,15 @@ class IA_Bomber:
                                 is_safe = False
                                 break
                 
+                # Une position est sûre si elle est à au moins 5 cases de toute bombe
+                for bomb in game_dict["bombes"]:
+                    bomb_pos = bomb["position"]
+                    if ((current_pos[0] == bomb_pos[0] and abs(current_pos[1] - bomb_pos[1]) <= 5) or  # Augmenté à 5
+                        (current_pos[1] == bomb_pos[1] and abs(current_pos[0] - bomb_pos[0]) <= 5) or  # Augmenté à 5
+                        self.get_min_distance(current_pos, bomb_pos) < 5):  # Augmenté à 5
+                        is_safe = False
+                        break
+
                 if is_safe and current_pos != pos:
                     safe_spots.append((current_pos, dist))
                     if len(safe_spots) >= 3:
@@ -460,5 +472,18 @@ class IA_Bomber:
                 escape_path = self.find_path(self, self.position, safe_spot, game_dict["map"])
                 if escape_path and len(escape_path) > 1:
                     return self.get_direction(self, self.position, escape_path[1])
+
+        # Vérifier d'abord si on est en danger immédiat
+        for bomb in game_dict["bombes"]:
+            bomb_pos = bomb["position"]
+            if ((self.position[0] == bomb_pos[0] and abs(self.position[1] - bomb_pos[1]) <= 5) or  # Augmenté à 5
+                (self.position[1] == bomb_pos[1] and abs(self.position[0] - bomb_pos[0]) <= 5) or  # Augmenté à 5
+                self.get_min_distance(self.position, bomb_pos) <= 5):  # Augmenté à 5
+                safe_spot = self.find_safest_escape(self, self.position, game_dict)
+                if safe_spot:
+                    self.safe_path = self.find_path(self, self.position, safe_spot, game_dict["map"])
+                    if len(self.safe_path) > 1:
+                        return self.get_direction(self, self.position, self.safe_path[1])
+                return "N"
 
         return "N"
