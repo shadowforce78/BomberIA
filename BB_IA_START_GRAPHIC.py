@@ -111,6 +111,17 @@ class SelectionWindow:
             command=self.update_ia_selectors,
             style="Modern.TRadiobutton",
         ).pack(padx=20, pady=5)
+        
+        # Ajout du mode 2 joueurs
+        ttk.Radiobutton(
+            game_mode_frame,
+            text="2 Joueurs",
+            variable=self.mode_var,
+            value="deux",
+            command=self.update_ia_selectors,
+            style="Modern.TRadiobutton",
+        ).pack(padx=20, pady=5)
+        
         ttk.Radiobutton(
             game_mode_frame,
             text="4 Joueurs",
@@ -162,7 +173,13 @@ class SelectionWindow:
             widget.destroy()
         self.ia_selections.clear()
 
-        num_players = 1 if self.mode_var.get() == "solo" else 4
+        # Modification pour supporter le mode 2 joueurs
+        num_players = {
+            "solo": 1,
+            "deux": 2,
+            "quatre": 4
+        }[self.mode_var.get()]
+        
         for i in range(num_players):
             player_frame = tk.Frame(self.ia_frame, bg=COLORS["light"])
             player_frame.pack(fill="x", padx=20, pady=5)
