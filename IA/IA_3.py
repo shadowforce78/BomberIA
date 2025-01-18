@@ -155,62 +155,103 @@ class IA_Bomber:
             
         self.find_safe_spot = find_safe_spot
 
-        def is_ghost_nearby(self, pos, ghosts, safe_distance=2):
+        def predict_ghost_positions(self, ghosts, current_pos):
+            danger_zones = set()
             for ghost in ghosts:
-                if self.get_min_distance(pos, ghost["position"]) <= safe_distance:
-                    return True
+                ghost_pos = ghost["position"]
+                # Add current ghost position
+                danger_zones.add(ghost_pos)
+                # Add potential next positions
+                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    next_x = ghost_pos[0] + dx
+                    next_y = ghost_pos[1] + dy
+                    if (0 <= next_y < len(self.map) and 
+                        0 <= next_x < len(self.map[0]) and 
+                        self.map[next_y][next_x] != 'C'):
+                        danger_zones.add((next_x, next_y))
+            return danger_zones
+
+        def is_ghost_nearby(self, pos, ghosts, safe_distance=3):  # Increased safe distance
+            for ghost in ghosts:
+                ghost_pos = ghost["position"]
+                if self.get_min_distance(pos, ghost_pos) <= safe_distance:
+                    # Check if ghost is moving towards us
+                    dx = pos[0] - ghost_pos[0]
+                    dy = pos[1] - ghost_pos[1]
+                    if abs(dx) <= 1 and abs(dy) <= 1:  # Adjacent positions are extra dangerous
+                        return True
+                    if (abs(dx) > abs(dy) and dx > 0) or (abs(dy) > abs(dx) and dy > 0):
+                        return True
             return False
         
         def is_position_safe(self, pos, game_dict):
-            # Check for ghosts
+            danger_zones = self.predict_ghost_positions(self, game_dict["fantômes"], pos)
+            
+            # Position is unsafe if it's in predicted ghost paths
+            if pos in danger_zones:
+                return False
+                
+            # Check for immediate ghost proximity
             if self.is_ghost_nearby(self, pos, game_dict["fantômes"]):
                 return False
+                
             # Check for bombs
             for bomb in game_dict["bombes"]:
-                if self.get_min_distance(pos, bomb["position"]) < 2:
+                if self.get_min_distance(pos, bomb["position"]) < 3:  # Increased bomb safety distance
                     return False
-            return True
-            
-        def find_safe_path(self, start, goal, game_dict):
-            # Modified pathfinding that avoids ghosts
-            from collections import deque
-            frontier = deque([(start, [start])])
-            visited = {start}
-            
-            while frontier:
-                pos, path = frontier.popleft()
-                if pos == goal:
-                    return path
                     
-                for next_pos in self.get_neighbors(self, pos, game_dict["map"]):
-                    if next_pos not in visited and self.is_position_safe(self, next_pos, game_dict):
-                        visited.add(next_pos)
-                        new_path = list(path)
-                        new_path.append(next_pos)
-                        frontier.append((next_pos, new_path))
-            return []
+            return True
 
+        def find_safest_escape(self, pos, game_dict):
+            safe_spots = []
+            checked = set()
+            to_check = [(pos, 0)]  # (position, distance)
+            
+            while to_check:
+                current_pos, dist = to_check.pop(0)
+                if current_pos in checked:
+                    continue
+                    
+                checked.add(current_pos)
+                
+                if self.is_position_safe(self, current_pos, game_dict) and current_pos != pos:
+                    safe_spots.append((current_pos, dist))
+                    if len(safe_spots) >= 3:  # Found enough safe spots
+                        break
+                        
+                for next_pos in self.get_neighbors(self, current_pos, game_dict["map"]):
+                    if next_pos not in checked:
+                        to_check.append((next_pos, dist + 1))
+                        
+            if safe_spots:
+                # Return the closest safe spot
+                return min(safe_spots, key=lambda x: x[1])[0]
+            return None
+
+        self.predict_ghost_positions = predict_ghost_positions
         self.is_ghost_nearby = is_ghost_nearby
         self.is_position_safe = is_position_safe
-        self.find_safe_path = find_safe_path
+        self.find_safest_escape = find_safest_escape
 
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
         
         # First priority: Check if we're in immediate danger from ghosts
-        if self.is_ghost_nearby(self, self.position, game_dict["fantômes"], 1):
-            # Try to find immediate escape route
-            safe_spots = []
+        if not self.is_position_safe(self, self.position, game_dict):
+            safe_spot = self.find_safest_escape(self, self.position, game_dict)
+            if safe_spot:
+                escape_path = self.find_path(self, self.position, safe_spot, game_dict["map"])
+                if escape_path and len(escape_path) > 1:
+                    return self.get_direction(self, self.position, escape_path[1])
+            # If no safe path found, try to move away from closest ghost
+            closest_ghost = min(game_dict["fantômes"], 
+                              key=lambda g: self.get_min_distance(self.position, g["position"]))
+            ghost_pos = closest_ghost["position"]
             for neighbor in self.get_neighbors(self, self.position, game_dict["map"]):
-                if self.is_position_safe(self, neighbor, game_dict):
-                    safe_spots.append(neighbor)
-            
-            if safe_spots:
-                safest_spot = min(safe_spots, 
-                                key=lambda p: min(self.get_min_distance(p, g["position"]) 
-                                                for g in game_dict["fantômes"]))
-                return self.get_direction(self, self.position, safest_spot)
+                if self.get_min_distance(neighbor, ghost_pos) > self.get_min_distance(self.position, ghost_pos):
+                    return self.get_direction(self, self.position, neighbor)
+            return "N"  # No safe move found
 
         # Update bomb timer if active
         if self.just_bombed:
@@ -249,13 +290,19 @@ class IA_Bomber:
                 self.safe_path = []
                 return "X"
         
-        # If no path or end of path, calculate new safe path
+        # If no path or end of path, calculate new path
         if not self.current_path or self.path_index >= len(self.current_path):
             closest_minerai = min(minerais, key=lambda m: self.get_min_distance(self.position, m))
-            self.current_path = self.find_safe_path(self, self.position, closest_minerai, game_dict)
-            self.path_index = 1
-            if not self.current_path:  # If no safe path found
-                return "N"
+            # Calculate path and verify each position is safe
+            temp_path = self.find_path(self, self.position, closest_minerai, game_dict["map"])
+            # Filter out unsafe positions
+            safe_path = [pos for pos in temp_path if self.is_position_safe(self, pos, game_dict)]
+            
+            if safe_path:
+                self.current_path = safe_path
+                self.path_index = 1
+            else:
+                return "N"  # No safe path found
         
         # Verify next move is still safe
         if self.path_index < len(self.current_path):
