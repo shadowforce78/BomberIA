@@ -62,128 +62,106 @@ class IA_Bomber:
         # Ajout des fonctions de pathfinding
         def get_neighbors(self, pos, map):
             neighbors = []
-            directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Bas, Haut, Droite, Gauche
+            directions = [(0, 1), (1, 0), (-1, 0), (0, -1)]
             for dx, dy in directions:
                 new_x, new_y = pos[0] + dx, pos[1] + dy
-                if (0 <= new_y < len(map) and 
-                    0 <= new_x < len(map[0]) and 
-                    map[new_y][new_x] != 'C'):
+                if (
+                    0 <= new_y < len(map)
+                    and 0 <= new_x < len(map[0])
+                    and map[new_y][new_x] != "C"
+                ):
                     neighbors.append((new_x, new_y))
             return neighbors
 
         self.get_neighbors = get_neighbors
+
+        def find_path(self, start, goal, map):
+            # Simple BFS implementation
+            from collections import deque
+            frontier = deque([(start, [start])])
+            visited = {start}
+            
+            while frontier:
+                pos, path = frontier.popleft()
+                if pos == goal:
+                    return path
+                    
+                for next_pos in self.get_neighbors(self, pos, map):
+                    if next_pos not in visited:
+                        visited.add(next_pos)
+                        new_path = list(path)
+                        new_path.append(next_pos)
+                        frontier.append((next_pos, new_path))
+            return []
+
+        self.find_path = find_path
 
         def heuristic(self, pos1, pos2):
             return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
         self.heuristic = heuristic
 
-        def find_path(self, start, goal, map):
-            from heapq import heappush, heappop
-            frontier = []
-            heappush(frontier, (0, start))
-            came_from = {start: None}
-            cost_so_far = {start: 0}
-
-            while frontier:
-                current = heappop(frontier)[1]
-                
-                if current == goal:
-                    break
-
-                for next_pos in self.get_neighbors(self, current, map):
-                    new_cost = cost_so_far[current] + 1
-                    if next_pos not in cost_so_far or new_cost < cost_so_far[next_pos]:
-                        cost_so_far[next_pos] = new_cost
-                        priority = new_cost + self.heuristic(self, goal, next_pos)
-                        heappush(frontier, (priority, next_pos))
-                        came_from[next_pos] = current
-
-            # Reconstruction du chemin
-            path = []
-            current = goal
-            while current is not None:
-                path.append(current)
-                current = came_from.get(current)
-            path.reverse()
-            return path if path[0] == start else []
-
-        self.find_path = find_path
-
         def get_direction(self, current_pos, next_pos):
             dx = next_pos[0] - current_pos[0]
             dy = next_pos[1] - current_pos[1]
-            if dx == 1: return "D"
-            if dx == -1: return "G"
-            if dy == 1: return "B"
-            if dy == -1: return "H"
+            if dx == 1:
+                return "D"
+            if dx == -1:
+                return "G"
+            if dy == 1:
+                return "B"
+            if dy == -1:
+                return "H"
             return "N"
 
         self.get_direction = get_direction
 
         # Initialisation du chemin
-        minerais = self.get_minerais(self, self.map)
-        if minerais:
-            self.current_path = self.find_path(self, self.position, minerais[0], self.map)
-            self.path_index = 1 if len(self.current_path) > 1 else 0
-        else:
-            self.current_path = []
-            self.path_index = 0
-
+        self.current_path = []
+        self.path_index = 0
         self.moves = []  # Add this line to store moves
         self.backtracking = False  # Add tracking for backtrack state
         self.backtrack_moves = []  # Store the sequence of moves to backtrack
-        
+
         def get_reverse_direction(direction):
-            if direction == "H": return "B"
-            if direction == "B": return "H"
-            if direction == "G": return "D"
-            if direction == "D": return "G"
+            if direction == "H":
+                return "B"
+            if direction == "B":
+                return "H"
+            if direction == "G":
+                return "D"
+            if direction == "D":
+                return "G"
             return "N"
-        
+
         self.get_reverse_direction = get_reverse_direction
 
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
-        
-        # If we're currently backtracking, continue with backtrack moves
-        if self.backtracking:
-            if self.backtrack_moves:
-                return self.backtrack_moves.pop()
-            else:
-                self.backtracking = False  # Done backtracking
-        
+
         # Check if we're next to a minerai
         minerais = self.get_minerais(self, game_dict["map"])
-        if minerais:
-            closest_minerai = minerais[0]
-            if self.get_min_distance(self.position, closest_minerai) == 1:
-                move = "X"
-                self.moves.append(move)
-                # Prepare backtrack moves
-                moves_to_reverse = self.moves[-4:-1] if len(self.moves) >= 4 else self.moves[:-1]
-                self.backtrack_moves = [self.get_reverse_direction(m) for m in reversed(moves_to_reverse)]
-                self.backtracking = True
-                return move
+        if not minerais:
+            return "N"
 
-        # Continue with normal pathfinding if not backtracking
+        # If next to minerai, place bomb
+        for minerai in minerais:
+            if self.get_min_distance(self.position, minerai) == 1:
+                return "X"
+        
+        # If no path or end of path, calculate new path
         if not self.current_path or self.path_index >= len(self.current_path):
-            if minerais:
-                self.current_path = self.find_path(self, self.position, minerais[0], game_dict["map"])
-                self.path_index = 1 if len(self.current_path) > 1 else 0
-            else:
-                move = "N"
-                self.moves.append(move)  # Store the move
-                return move
-
+            closest_minerai = min(minerais, key=lambda m: self.get_min_distance(self.position, m))
+            self.current_path = self.find_path(self, self.position, closest_minerai, game_dict["map"])
+            self.path_index = 1
+            if not self.current_path:  # If no path found
+                return "N"
+        
+        # Get next move from path
         if self.path_index < len(self.current_path):
             next_pos = self.current_path[self.path_index]
-            direction = self.get_direction(self, self.position, next_pos)
             self.path_index += 1
-            self.moves.append(direction)  # Store the move
-            return direction
-
-        move = "N"
-        self.moves.append(move)  # Store the move
-        return move
+            return self.get_direction(self, self.position, next_pos)
+            
+        return "N"
