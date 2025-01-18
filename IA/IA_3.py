@@ -42,6 +42,7 @@ class IA_Bomber:
         self.compteur_tour = game_dict["compteur_tour"]
         self.scores = game_dict["scores"]
 
+        self.dispositif_range = 2 + self.joueur[self.num_joueur]["niveau"] // 2
         self.position = self.joueur[self.num_joueur]["position"]
 
         def get_min_distance(pos1, pos2):
@@ -228,13 +229,13 @@ class IA_Bomber:
                 bomb_pos = bomb["position"]
                 if (
                     (
-                        pos[0] == bomb_pos[0] and abs(pos[1] - bomb_pos[1]) <= 5
-                    )  # Augmenté à 5
+                        pos[0] == bomb_pos[0] and abs(pos[1] - bomb_pos[1]) <= self.dispositif_range
+                    )
                     or (
-                        pos[1] == bomb_pos[1] and abs(pos[0] - bomb_pos[0]) <= 5
-                    )  # Augmenté à 5
-                    or self.get_min_distance(pos, bomb_pos) < 5
-                ):  # Augmenté à 5
+                        pos[1] == bomb_pos[1] and abs(pos[0] - bomb_pos[0]) <= self.dispositif_range
+                    )
+                    or self.get_min_distance(pos, bomb_pos) < self.dispositif_range
+                ):
                     return False
 
             return True  # Ignorer les autres bombers
@@ -280,14 +281,14 @@ class IA_Bomber:
                     if (
                         (
                             current_pos[0] == bomb_pos[0]
-                            and abs(current_pos[1] - bomb_pos[1]) <= 5
-                        )  # Augmenté à 5
+                            and abs(current_pos[1] - bomb_pos[1]) <= self.dispositif_range
+                        )
                         or (
                             current_pos[1] == bomb_pos[1]
-                            and abs(current_pos[0] - bomb_pos[0]) <= 5
-                        )  # Augmenté à 5
-                        or self.get_min_distance(current_pos, bomb_pos) < 5
-                    ):  # Augmenté à 5
+                            and abs(current_pos[0] - bomb_pos[0]) <= self.dispositif_range
+                        )
+                        or self.get_min_distance(current_pos, bomb_pos) < self.dispositif_range
+                    ):
                         is_safe = False
                         break
 
@@ -354,7 +355,7 @@ class IA_Bomber:
 
             # Vérifie que d'autres bombes ne sont pas trop proches
             for bomb in game_dict["bombes"]:
-                if self.get_min_distance(pos, bomb["position"]) < 4:
+                if self.get_min_distance(pos, bomb["position"]) < self.dispositif_range:
                     return False
 
             return True
@@ -618,14 +619,14 @@ class IA_Bomber:
             if (
                 (
                     self.position[0] == bomb_pos[0]
-                    and abs(self.position[1] - bomb_pos[1]) <= 5
-                )  # Augmenté à 5
+                    and abs(self.position[1] - bomb_pos[1]) <= self.dispositif_range
+                )
                 or (
                     self.position[1] == bomb_pos[1]
-                    and abs(self.position[0] - bomb_pos[0]) <= 5
-                )  # Augmenté à 5
-                or self.get_min_distance(self.position, bomb_pos) <= 5
-            ):  # Augmenté à 5
+                    and abs(self.position[0] - bomb_pos[0]) <= self.dispositif_range
+                )
+                or self.get_min_distance(self.position, bomb_pos) <= self.dispositif_range
+            ):
                 safe_spot = self.find_safest_escape(self, self.position, game_dict)
                 if safe_spot:
                     self.safe_path = self.find_path(
