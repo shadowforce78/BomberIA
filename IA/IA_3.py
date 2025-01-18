@@ -351,6 +351,14 @@ class IA_Bomber:
 
         self.has_line_of_sight = has_line_of_sight
 
+    def best_ghost_to_bomb(self, game_dict):
+        """Retourne la position d'un fantôme si un fantôme est à distance 1."""
+        for ghost in game_dict["fantômes"]:
+            ghost_pos = ghost["position"]
+            if self.get_min_distance(self.position, ghost_pos) == 1:
+                return ghost_pos
+        return None
+
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
@@ -427,6 +435,15 @@ class IA_Bomber:
                     self.just_bombed = True
                     self.bomb_timer = 0
                     return "X"
+
+        # Vérifier si un fantôme est à distance 1
+        ghost_pos = self.best_ghost_to_bomb(game_dict)
+        if ghost_pos and self.is_safe_to_bomb(self, self.position, game_dict):
+            # Poser une bombe
+            self.just_bombed = True
+            self.bomb_timer = 0
+            self.safe_path = []
+            return "X"
 
         # Update bomb timer if active
         if self.just_bombed:
