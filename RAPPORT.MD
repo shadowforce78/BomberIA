@@ -127,3 +127,8 @@ L'IA rencontrait des difficultés pour se déplacer correctement vers le bas de 
    - Optimiser le pathfinding pour plus d'efficacité
    - Améliorer la gestion des obstacles
    - Développer une meilleure priorisation des objectifs
+
+## Crédits
+
+Ce projet a été devellopé par Loic Péchiné et Adam Planque.
+
