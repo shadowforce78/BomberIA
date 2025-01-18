@@ -136,18 +136,63 @@ class IA_Bomber:
 
         self.get_reverse_direction = get_reverse_direction
 
+        # Add these new variables
+        self.just_bombed = False
+        self.safe_path = []
+        self.bomb_timer = 0  # Add timer to track bomb countdown
+        
+        def find_safe_spot(self, pos, map):
+            # Check positions at least 3 cells away for better safety
+            safe_spots = []
+            search_range = 4  # Increased search range
+            for y in range(max(0, pos[1] - search_range), min(len(map), pos[1] + search_range + 1)):
+                for x in range(max(0, pos[0] - search_range), min(len(map[0]), pos[0] + search_range + 1)):
+                    if (map[y][x] != 'C' and 
+                        (x, y) != pos and 
+                        abs(x - pos[0]) + abs(y - pos[1]) >= 3):  # Increased minimum distance
+                        safe_spots.append((x, y))
+            return min(safe_spots, key=lambda p: self.get_min_distance(pos, p), default=None)
+            
+        self.find_safe_spot = find_safe_spot
+
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
         self.position = game_dict["bombers"][self.num_joueur]["position"]
 
-        # Check if we're next to a minerai
+        # Update bomb timer if active
+        if self.just_bombed:
+            if self.bomb_timer < 5:  # Stay safe for 5 turns
+                self.bomb_timer += 1
+                
+                if not self.safe_path:  # Find path to safety if we don't have one
+                    safe_spot = self.find_safe_spot(self, self.position, game_dict["map"])
+                    if safe_spot:
+                        self.safe_path = self.find_path(self, self.position, safe_spot, game_dict["map"])
+                        if self.safe_path:
+                            self.safe_path = self.safe_path[1:]
+                
+                if self.safe_path:  # Move along safety path
+                    next_pos = self.safe_path.pop(0)
+                    return self.get_direction(self, self.position, next_pos)
+                return "N"  # Stay put if no safe path found
+            else:
+                # Reset bomb-related variables after 5 turns
+                self.just_bombed = False
+                self.bomb_timer = 0
+                self.safe_path = []
+                self.current_path = []  # Reset current path to recalculate route
+
+        # Normal minerai seeking behavior
         minerais = self.get_minerais(self, game_dict["map"])
         if not minerais:
             return "N"
 
-        # If next to minerai, place dispositif
+        # If next to minerai, place bomb and prepare to run
         for minerai in minerais:
             if self.get_min_distance(self.position, minerai) == 1:
+                self.just_bombed = True
+                self.bomb_timer = 0
+                self.safe_path = []
                 return "X"
         
         # If no path or end of path, calculate new path
