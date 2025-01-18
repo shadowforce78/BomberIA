@@ -59,7 +59,11 @@ def partie(noms_des_joueurs: list[str], scenario: str):
     while not game_over:
         game.log("début_tour " + str(game.compteur_tour))
         print(f"\n=== Tour {game.compteur_tour} ===")
-        # print(game.to_dict())
+
+        # Arrêter immédiatement si on est en mode solo et que le joueur est mort
+        if nb_joueurs == 1 and game.bombers[0].pv <= 0:
+            print("Joueur unique éliminé - Fin de partie!")
+            break
 
         # phase joueurs
         for j in range(nb_joueurs):
@@ -124,13 +128,14 @@ def partie(noms_des_joueurs: list[str], scenario: str):
         print(f"Joueur {j+1} ({noms_des_joueurs[j]}): {game.scores[j]} points")
 
     game.log("game_over")
-    game.log(f"vie {game.bombers[0].pv}")
+    # for j in range(nb_joueurs):
+    #     game.log(f"vies du joueur {j} : {game.bombers[j].pv}")
     game.log(f"scores {game.scores}")
 
 
 if __name__ == "__main__":
-    # Test sur battle0.txt (4 joueurs)
-    partie(["IA_3"], "maps/training3.txt")
+    # Test sur training1.txt (1 joueur)
+    # partie(["IA_3"], "maps/training3.txt")
 
     # Test sur battle1.txt (4 joueurs)
-    # partie(['IA_3', 'IA_3', 'IA_3', 'IA_3'], "maps/battle0.txt")
+    partie(['IA_3', 'IA_3', 'IA_3', 'IA_3'], "maps/battle1.txt")

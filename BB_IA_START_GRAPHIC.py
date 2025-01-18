@@ -488,10 +488,16 @@ class JeuBomberTK:
         try:
             self.game.phase_non_joueur()
             # Vérifier si un bomber est mort pendant la phase non-joueur
+            all_dead = True
             for j, bomber in enumerate(self.game.bombers):
-                if bomber.pv == 0 and not self.game_over_happened:
-                    self.game_over(j)
-                    return
+                if bomber.pv > 0:
+                    all_dead = False
+                    break
+            
+            if all_dead:
+                self.finir_partie()
+                return
+
         except Exception as e:
             print(f"Erreur dans la phase non-joueur: {str(e)}")
 
@@ -501,7 +507,7 @@ class JeuBomberTK:
         # Vérifie les conditions de fin de partie uniquement en mode multijoueur
         if len(self.ias) > 1:  # Si plus d'un joueur
             alive_players = sum(1 for bomber in self.game.bombers if bomber.pv > 0)
-            if alive_players <= 1:
+            if alive_players == 0:  # La partie se termine uniquement quand tous les joueurs sont morts
                 self.finir_partie()
                 return
 
