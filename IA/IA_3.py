@@ -55,6 +55,8 @@ class IA_Bomber:
                 for x in range(len(map[y])):
                     if map[y][x] == "M":
                         minerais.append((x, y))
+            # On ne garde que les 10 plus proches
+            minerais = sorted(minerais, key=lambda m: self.get_min_distance(self.position, m))[:10]
             return minerais
 
         self.get_minerais = get_minerais
@@ -178,14 +180,16 @@ class IA_Bomber:
             for ghost in ghosts:
                 ghost_pos = ghost["position"]
                 if self.get_min_distance(pos, ghost_pos) <= safe_distance:
-                    return True
+                    if self.has_line_of_sight(self, pos, ghost_pos, self.map):
+                        return True
             return False
         
         def is_position_safe(self, pos, game_dict):
             # Vérification immédiate des fantômes
             for ghost in game_dict["fantômes"]:
                 if self.get_min_distance(pos, ghost["position"]) <= 4:  # Distance de sécurité augmentée
-                    return False
+                    if self.has_line_of_sight(self, pos, ghost["position"], self.map):
+                        return False
 
             # Vérification des bombes avec distance de sécurité augmentée
             for bomb in game_dict["bombes"]:
@@ -203,7 +207,7 @@ class IA_Bomber:
             safe_spots = []
             checked = set()
             to_check = [(pos, 0)]
-            max_distance = 8  # Augmentation de la distance de recherche
+            max_distance = 12  # Augmente le rayon de recherche de 8 à 12
             
             while to_check:
                 current_pos, dist = to_check.pop(0)
@@ -249,6 +253,7 @@ class IA_Bomber:
             if safe_spots:
                 # Calculer le score de sécurité pour chaque position
                 def get_safety_score(spot):
+                    # Prise en compte renforcée de la distance au fantôme
                     ghost_distance = float('inf')
                     if game_dict["fantômes"]:
                         ghost_distance = min(self.get_min_distance(spot[0], g["position"]) 
@@ -261,7 +266,7 @@ class IA_Bomber:
                         bomber_distance = min(self.get_min_distance(spot[0], b["position"]) 
                                            for b in active_bombers)
                     
-                    return min(ghost_distance, bomber_distance * 2)
+                    return ghost_distance  # On valorise surtout l'éloignement des fantômes
                 
                 return max(safe_spots, key=get_safety_score)[0]
             return None
@@ -324,6 +329,27 @@ class IA_Bomber:
         self.is_ghost_pursuing = is_ghost_pursuing
         self.find_defensive_position = find_defensive_position
         self.prev_ghost_positions = {}  # Pour suivre les mouvements des fantômes
+
+        def has_line_of_sight(self, start, end, map):
+            # Implémentation simplifiée d'un tracé de ligne bloqué par les murs 'C'
+            x1, y1 = start
+            x2, y2 = end
+            dx = x2 - x1
+            dy = y2 - y1
+            n = max(abs(dx), abs(dy))
+            if n == 0:
+                return True
+            step_x = dx / n
+            step_y = dy / n
+            cx, cy = float(x1), float(y1)
+            for _ in range(n):
+                cx += step_x
+                cy += step_y
+                if map[int(cy)][int(cx)] == 'C':  # Renvoie False si un mur bloque la vue
+                    return False
+            return True
+
+        self.has_line_of_sight = has_line_of_sight
 
     def action(self, game_dict: dict) -> str:
         """Appelé à chaque décision du joueur IA"""
