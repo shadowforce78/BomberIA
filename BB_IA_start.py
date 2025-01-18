@@ -65,8 +65,8 @@ def partie(noms_des_joueurs: list[str], scenario: str):
         for j in range(nb_joueurs):
             if game.bombers[j].pv > 0:
                 # Sauvegarde puis restauration du stdout après l'appel à action()
-                original_stdout = sys.stdout 
-                sys.stdout = open(os.devnull, 'w')
+                original_stdout = sys.stdout
+                sys.stdout = open(os.devnull, "w")
                 action = IAs[j].action(game.to_dict())
                 sys.stdout.close()
                 sys.stdout = original_stdout
@@ -128,10 +128,9 @@ def partie(noms_des_joueurs: list[str], scenario: str):
     game.log(f"scores {game.scores}")
 
 
-
 if __name__ == "__main__":
     # Test sur battle0.txt (4 joueurs)
     partie(["IA_3"], "maps/training2.txt")
 
     # Test sur battle1.txt (4 joueurs)
-    # partie(['IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL'], "maps/battle0.txt")
+    # # partie(['IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL', 'IA_FLOOD_FILL'], "maps/battle0.txt")
