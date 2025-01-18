@@ -21,7 +21,7 @@ def run_multiple_simulations(num_simulations=100):
     # Calculate averages
     avg_scores = [score/num_simulations for score in total_scores]
     
-    print("\n=== Final Average Scores ===")
+    print(f"\n=== Final Average Scores for map {map_file} ===")
     print(f"After {num_simulations} simulations:")
     for i, ia in enumerate([IA1, IA2, IA3, IA4]):
         print(f"{ia}: {avg_scores[i]:.2f} points")
@@ -29,4 +29,4 @@ def run_multiple_simulations(num_simulations=100):
     return avg_scores
 
 if __name__ == "__main__":
-    run_multiple_simulations(100)
+    run_multiple_simulations(1000)
