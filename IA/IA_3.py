@@ -280,16 +280,21 @@ class IA_Bomber:
             return self.get_min_distance(pos, ghost_pos) == 1
 
         def is_safe_to_bomb(self, pos, game_dict):
-            # Vérifie si on a une route d'échappement
+            # Vérifie si on a un spot sûr
             escape_spot = self.find_safe_spot(self, pos, game_dict["map"])
             if not escape_spot:
                 return False
-                
-            # Vérifie qu'il n'y a pas d'autres bombes à proximité
+            
+            # Vérifie qu'on peut rejoindre la zone sûre
+            path_to_escape = self.find_path(self, pos, escape_spot, game_dict["map"])
+            if not path_to_escape or len(path_to_escape) < 2:
+                return False
+
+            # Vérifie que d'autres bombes ne sont pas trop proches
             for bomb in game_dict["bombes"]:
                 if self.get_min_distance(pos, bomb["position"]) < 4:
                     return False
-            
+
             return True
 
         self.can_hit_ghost = can_hit_ghost
