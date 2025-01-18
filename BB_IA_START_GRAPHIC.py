@@ -513,29 +513,33 @@ class JeuBomberTK:
 
     def game_over(self, player_index):
         """Affiche game over quand un joueur meurt"""
-        self.game_over_happened = True  # Marque que le game over a eu lieu
-        self.auto_play = False
-        self.btn_tour["state"] = "disabled"
-        self.btn_auto["state"] = "disabled"
-        
-        # Affichage du message game over
-        self.canvas.create_text(
-            400, 300,
-            text=f"Game Over - Joueur {player_index + 1} est mort!",
-            font=("Arial", 24),
-            fill=COLORS["danger"]
-        )
-        
-        # Afficher le score final
-        score_text = f"Score final: {self.game.scores[player_index]} points"
-        self.canvas.create_text(
-            400, 350,
-            text=score_text,
-            font=("Arial", 18),
-            fill=COLORS["text"]
-        )
-        
-        self.afficher_carte()
+        if len(self.ias) == 1:  # Seulement en mode solo
+            self.game_over_happened = True
+            self.auto_play = False
+            self.btn_tour["state"] = "disabled"
+            self.btn_auto["state"] = "disabled"
+            
+            # Affichage du message game over
+            self.canvas.delete("game_text")  # Supprime les anciens textes
+            self.canvas.create_text(
+                400, 300,
+                text=f"Game Over - Joueur {player_index + 1} est mort!",
+                font=("Arial", 24),
+                fill=COLORS["danger"],
+                tags="game_text"
+            )
+            
+            # Afficher le score final
+            score_text = f"Score final: {self.game.scores[player_index]} points"
+            self.canvas.create_text(
+                400, 350,
+                text=score_text,
+                font=("Arial", 18),
+                fill=COLORS["text"],
+                tags="game_text"
+            )
+            
+            self.afficher_carte()
 
     def toggle_auto_play(self):
         """Active ou désactive le défilement automatique"""
@@ -567,6 +571,9 @@ class JeuBomberTK:
         self.btn_tour["state"] = "disabled"
         self.btn_auto["state"] = "disabled"
 
+        # Supprimer tous les textes de game over précédents
+        self.canvas.delete("game_text")
+
         # Trouver le gagnant
         max_score = -1
         winner = -1
@@ -582,6 +589,7 @@ class JeuBomberTK:
                 text=f"Partie Terminée - Joueur {winner + 1} gagne avec {max_score} points!",
                 font=("Arial", 24, "bold"),
                 fill="red",
+                tags="game_text"
             )
         else:
             self.canvas.create_text(
@@ -590,6 +598,7 @@ class JeuBomberTK:
                 text="Partie Terminée - Égalité!",
                 font=("Arial", 24, "bold"),
                 fill="red",
+                tags="game_text"
             )
 
     def update_speed(self, value):
