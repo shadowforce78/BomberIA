@@ -274,7 +274,7 @@ class JeuBomberTK:
 
         # Labels unifiés pour les stats et scores
         self.stats_labels = []
-        stats_colors = [COLORS["accent"], COLORS["success"], COLORS["warning"], COLORS["danger"]]
+        stats_colors = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f"]  # Rouge, Bleu, Vert, Jaune
         
         for i in range(len(selected_ias)):
             frame = tk.Frame(self.stats_frame, bg=COLORS["light"])
@@ -431,9 +431,9 @@ class JeuBomberTK:
                         bomber.position.x == x
                         and bomber.position.y == y
                         and bomber.pv > 0
-                    ):  # Correction ici aussi
+                    ):
                         # Couleurs différentes pour chaque joueur
-                        player_colors = ["red", "blue", "green", "yellow"]
+                        player_colors = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f"]  # Rouge, Bleu, Vert, Jaune
                         color = player_colors[i % len(player_colors)]
 
                         # Dessiner le joueur comme un cercle
@@ -492,7 +492,9 @@ class JeuBomberTK:
                         self.game.résoudre_action(j, action)
                         # Vérifier si le bomber est mort après l'action
                         if self.game.bombers[j].pv == 0:
-                            self.game_over(j)
+                            self.game.bombers.pop(j)  # Retirer le bomber du jeu
+                            self.ias.pop(j)  # Retirer l'IA correspondante
+                            self.stats_labels.pop(j).destroy()  # Retirer le label de stats
                             return
                 except Exception as e:
                     print(f"Erreur pour le joueur {j}: {str(e)}")
@@ -502,13 +504,13 @@ class JeuBomberTK:
         try:
             self.game.phase_non_joueur()
             # Vérifier si un bomber est mort pendant la phase non-joueur
-            all_dead = True
-            for j, bomber in enumerate(self.game.bombers):
-                if bomber.pv > 0:
-                    all_dead = False
-                    break
-            
-            if all_dead:
+            for j in reversed(range(len(self.game.bombers))):
+                if self.game.bombers[j].pv == 0:
+                    self.game.bombers.pop(j)  # Retirer le bomber du jeu
+                    self.ias.pop(j)  # Retirer l'IA correspondante
+                    self.stats_labels.pop(j).destroy()  # Retirer le label de stats
+
+            if not self.game.bombers:
                 self.finir_partie()
                 return
 
