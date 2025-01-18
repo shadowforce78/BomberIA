@@ -145,7 +145,7 @@ class IA_Bomber:
         if not minerais:
             return "N"
 
-        # If next to minerai, place bomb
+        # If next to minerai, place dispositif
         for minerai in minerais:
             if self.get_min_distance(self.position, minerai) == 1:
                 return "X"
