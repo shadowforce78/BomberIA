@@ -36,13 +36,13 @@ class IA_Bomber:
         self.timerfantôme = timerfantôme
 
         self.map = game_dict["map"]
-        self.bombers = game_dict["bombers"]
+        self.joueur = game_dict["bombers"]
         self.fantômes = game_dict["fantômes"]
-        self.bombes = game_dict["bombes"]
+        self.dispositif = game_dict["bombes"]
         self.compteur_tour = game_dict["compteur_tour"]
         self.scores = game_dict["scores"]
 
-        self.position = self.bombers[self.num_joueur]["position"]
+        self.position = self.joueur[self.num_joueur]["position"]
 
         def get_min_distance(pos1, pos2):
             return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
