@@ -411,7 +411,7 @@ class Game:
 
         # fin de tour
         self.compteur_tour += 1
-        self.log("fin_tour\n")
+        self.log(f"fin_tour {self.compteur_tour}\n")
 
 
 def charger_scenario(scenario: str) -> Game:

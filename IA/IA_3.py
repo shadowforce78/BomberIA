@@ -189,6 +189,12 @@ class IA_Bomber:
                 if self.get_min_distance(pos, bomb["position"]) < 4:  # Distance de sécurité augmentée
                     return False
                     
+            # Éviter les autres bombers
+            for bomber in game_dict["bombers"]:
+                if bomber["num_joueur"] != self.num_joueur and bomber["pv"] > 0:
+                    if self.get_min_distance(pos, bomber["position"]) <= 2:  # Distance de sécurité pour les autres bombers
+                        return False
+                    
             return True
 
         def find_safest_escape(self, pos, game_dict):
@@ -204,12 +210,21 @@ class IA_Bomber:
                     
                 checked.add(current_pos)
                 
-                # Un endroit est sûr s'il est loin des fantômes
+                # Un endroit est sûr s'il est loin des fantômes et des autres bombers
                 is_safe = True
+                # Vérifier les fantômes
                 for ghost in game_dict["fantômes"]:
                     if self.get_min_distance(current_pos, ghost["position"]) <= 4:
                         is_safe = False
                         break
+                        
+                # Vérifier les autres bombers
+                if is_safe:
+                    for bomber in game_dict["bombers"]:
+                        if bomber["num_joueur"] != self.num_joueur and bomber["pv"] > 0:
+                            if self.get_min_distance(current_pos, bomber["position"]) <= 2:
+                                is_safe = False
+                                break
                 
                 if is_safe and current_pos != pos:
                     safe_spots.append((current_pos, dist))
@@ -221,10 +236,23 @@ class IA_Bomber:
                         to_check.append((next_pos, dist + 1))
                         
             if safe_spots:
-                return max(safe_spots, key=lambda x: min(
-                    self.get_min_distance(x[0], g["position"]) 
-                    for g in game_dict["fantômes"]
-                ))[0]
+                # Calculer le score de sécurité pour chaque position
+                def get_safety_score(spot):
+                    ghost_distance = float('inf')
+                    if game_dict["fantômes"]:
+                        ghost_distance = min(self.get_min_distance(spot[0], g["position"]) 
+                                          for g in game_dict["fantômes"])
+                    
+                    bomber_distance = float('inf')
+                    active_bombers = [b for b in game_dict["bombers"] 
+                                    if b["num_joueur"] != self.num_joueur and b["pv"] > 0]
+                    if active_bombers:
+                        bomber_distance = min(self.get_min_distance(spot[0], b["position"]) 
+                                           for b in active_bombers)
+                    
+                    return min(ghost_distance, bomber_distance * 2)
+                
+                return max(safe_spots, key=get_safety_score)[0]
             return None
 
         self.predict_ghost_positions = predict_ghost_positions
@@ -418,4 +446,19 @@ class IA_Bomber:
             self.path_index += 1
             return self.get_direction(self, self.position, next_pos)
             
+        # Vérification des autres bombers proches
+        dangerous_bomber = False
+        for bomber in game_dict["bombers"]:
+            if bomber["num_joueur"] != self.num_joueur and bomber["pv"] > 0:
+                if self.get_min_distance(self.position, bomber["position"]) <= 2:
+                    dangerous_bomber = True
+                    break
+
+        if dangerous_bomber:
+            safe_spot = self.find_safest_escape(self, self.position, game_dict)
+            if safe_spot:
+                escape_path = self.find_path(self, self.position, safe_spot, game_dict["map"])
+                if escape_path and len(escape_path) > 1:
+                    return self.get_direction(self, self.position, escape_path[1])
+
         return "N"

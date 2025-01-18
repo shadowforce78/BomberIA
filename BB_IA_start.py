@@ -138,4 +138,4 @@ if __name__ == "__main__":
     # partie(["IA_3"], "maps/training3.txt")
 
     # Test sur battle1.txt (4 joueurs)
-    partie(['IA_3', 'IA_3', 'IA_3', 'IA_3'], "maps/battle1.txt")
+    partie(['IA_3', 'IA_3', 'IA_3', 'IA_3'], "maps/battle0.txt")

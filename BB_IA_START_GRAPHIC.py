@@ -222,13 +222,21 @@ class JeuBomberTK:
         canvas_width = game_width * self.taille_case
         canvas_height = game_height * self.taille_case
 
-        # Frame principale avec padding
-        self.main_frame = tk.Frame(master, bg=COLORS["light"])
-        self.main_frame.pack(padx=20, pady=20)
+        # Créer un conteneur principal pour organiser l'interface horizontalement
+        self.container = tk.Frame(master, bg=COLORS["light"])
+        self.container.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # Canvas avec bordure moderne et taille adaptée
+        # Frame gauche pour le jeu
+        self.left_frame = tk.Frame(self.container, bg=COLORS["light"])
+        self.left_frame.pack(side="left", fill="both")
+
+        # Frame droite pour les stats et contrôles
+        self.right_frame = tk.Frame(self.container, bg=COLORS["light"])
+        self.right_frame.pack(side="right", fill="y", padx=20)
+
+        # Canvas dans la frame gauche
         self.canvas = tk.Canvas(
-            self.main_frame,
+            self.left_frame,
             width=canvas_width,
             height=canvas_height,
             bg=COLORS["light"],
@@ -237,35 +245,53 @@ class JeuBomberTK:
         )
         self.canvas.pack()
 
-        # Frame pour les informations
-        self.info_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
-        self.info_frame.pack(fill="x", pady=5)
+        # Stats dans la frame droite
+        self.stats_frame = tk.LabelFrame(
+            self.right_frame,
+            text="Scores et Statistiques",
+            font=("Helvetica", 12),
+            bg=COLORS["light"],
+            fg=COLORS["text"]
+        )
+        self.stats_frame.pack(fill="x", pady=10)
 
-        # Labels pour les scores
-        self.score_labels = []
-        for i in range(4):  # Maximum 4 joueurs
-            label = tk.Label(self.info_frame, text="", font=("Arial", 12))
-            label.grid(row=0, column=i, padx=10)
-            self.score_labels.append(label)
+        # Labels unifiés pour les stats et scores
+        self.stats_labels = []
+        stats_colors = [COLORS["accent"], COLORS["success"], COLORS["warning"], COLORS["danger"]]
+        
+        for i in range(len(selected_ias)):
+            frame = tk.Frame(self.stats_frame, bg=COLORS["light"])
+            frame.pack(pady=5, padx=5, fill="x")
+            
+            label = tk.Label(
+                frame,
+                text="",
+                font=("Helvetica", 11, "bold"),
+                justify=tk.LEFT,
+                fg=stats_colors[i % len(stats_colors)],
+                bg=COLORS["light"]
+            )
+            label.pack(anchor="w")
+            self.stats_labels.append(label)
 
-        # Frame pour les contrôles avec style moderne
-        self.control_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
+        # Contrôles dans la frame droite
+        self.control_frame = tk.Frame(self.right_frame, bg=COLORS["light"])
         self.control_frame.pack(pady=20)
 
-        # Boutons modernes
+        # Boutons de contrôle
         self.btn_tour = ModernButton(
             self.control_frame, text="▶ Tour suivant", command=self.jouer_tour
         )
-        self.btn_tour.grid(row=0, column=0, padx=10)
+        self.btn_tour.pack(pady=5)
 
         self.btn_auto = ModernButton(
             self.control_frame, text="⟳ Défilement Auto", command=self.toggle_auto_play
         )
-        self.btn_auto.grid(row=0, column=1, padx=10)
+        self.btn_auto.pack(pady=5)
 
-        # Slider moderne pour la vitesse
+        # Slider pour la vitesse
         self.speed_frame = tk.Frame(self.control_frame, bg=COLORS["light"])
-        self.speed_frame.grid(row=0, column=2, padx=20)
+        self.speed_frame.pack(pady=10)
 
         tk.Label(
             self.speed_frame,
@@ -288,52 +314,24 @@ class JeuBomberTK:
         self.speed_scale.set(1000)
         self.speed_scale.pack()
 
-        # Frame pour les scores avec style moderne
-        self.score_frame = tk.Frame(self.main_frame, bg=COLORS["light"])
-        self.score_frame.pack(fill="x", pady=10)
-
-        self.score_labels = []
-        score_colors = [
-            COLORS["accent"],
-            COLORS["success"],
-            COLORS["warning"],
-            COLORS["danger"],
-        ]
-
-        for i in range(len(selected_ias)):
-            label = tk.Label(
-                self.score_frame,
-                text=f"Joueur {i+1}: 0 pts",
-                font=("Helvetica", 12),
-                fg=score_colors[i % len(score_colors)],
-                bg=COLORS["light"],
-            )
-            label.grid(row=0, column=i, padx=20)
-            self.score_labels.append(label)
-
         # Centrer la fenêtre
-        window_width = canvas_width + 40  # +40 pour le padding
-        window_height = canvas_height + 200  # +200 pour les contrôles et scores
+        window_width = canvas_width + 300  # +300 pour les stats et contrôles
+        window_height = max(canvas_height + 40, 600)  # hauteur minimum de 600px
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         self.master.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        # Initialisation du jeu
-        self.game = charger_scenario(scenario)
+        # Initialisation unique du jeu et des variables
+        self.game = charger_scenario(scenario)  # Une seule fois ici
         self.selected_ias = selected_ias
         self.ias = self._charger_IAs()
         self.auto_play = False
-        self.auto_play_speed = 500
-
-        # Initialisation des variables de timing
-        self.auto_play = False
-        self.auto_play_speed = 1000  # Valeur par défaut en millisecondes
-        self.last_auto_time = 0  # Pour tracker le dernier tour auto
-        self.auto_play_after_id = None  # Pour stocker l'id du dernier after()
+        self.auto_play_speed = 1000
+        self.auto_play_after_id = None
+        self.game_over_happened = False
 
         # Premier affichage
         self.afficher_carte()
-        self.game_over_happened = False  # Nouvelle variable pour tracker le game over
 
     def _charger_IAs(self):
         list_ia = []
@@ -350,6 +348,7 @@ class JeuBomberTK:
         return list_ia
 
     def afficher_carte(self):
+        """Affiche la carte et met à jour les statistiques"""
         self.canvas.delete("all")
 
         # Utiliser la taille de case calculée
@@ -433,29 +432,27 @@ class JeuBomberTK:
                             font=("Arial", 10, "bold"),
                         )
 
-        # Mettre à jour les labels de score au lieu de dessiner sur le canvas
+        # Mise à jour unifiée des statistiques
         for i, bomber in enumerate(self.game.bombers):
-            score_text = f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
-            self.score_labels[i].config(
-                text=score_text, fg=["red", "blue", "green", "yellow"][i % 4]
-            )
+            if i < len(self.stats_labels):
+                stats_text = f"=== Joueur {i+1} ===\n"
+                stats_text += f"♥ PV: {bomber.pv}\n"
+                stats_text += f"🏆 Score: {self.game.scores[i]}\n"
+                stats_text += f"📈 Niveau: {bomber.niveau}\n"
+                stats_text += f"📍 Position: ({bomber.position.x},{bomber.position.y})\n"
+                stats_text += f"💥 Portée: {2 + bomber.niveau // 2}"
+                
+                self.stats_labels[i].config(text=stats_text)
 
-        # Si game over, afficher au centre
+        # Affichage du game over si nécessaire
         if self.game.is_game_over():
             self.canvas.create_text(
-                400, 300, text="Partie Terminée", font=("Arial", 24), fill="red"
+                self.canvas.winfo_width() // 2,
+                self.canvas.winfo_height() // 2,
+                text="Partie Terminée",
+                font=("Arial", 24),
+                fill="red"
             )
-
-        # Mise à jour des scores de manière sécurisée
-        for i in range(len(self.score_labels)):
-            if i < len(self.game.bombers):
-                bomber = self.game.bombers[i]
-                score_text = (
-                    f"Joueur {i+1}: {self.game.scores[i]} pts (PV: {bomber.pv})"
-                )
-                self.score_labels[i].config(text=score_text)
-            else:
-                self.score_labels[i].config(text=f"Joueur {i+1}: Éliminé")
 
     def jouer_tour(self):
         # Vérifier si le jeu n'est pas déjà terminé
