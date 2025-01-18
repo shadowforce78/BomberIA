@@ -1,4 +1,4 @@
-# Rapport d'analyse - IA_Bomber
+# Rapport de projet - IA_Bomber
 
 ## 1. Fonctionnement général de l'IA
 
