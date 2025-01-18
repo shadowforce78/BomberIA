@@ -128,9 +128,8 @@ def partie(noms_des_joueurs: list[str], scenario: str):
         print(f"Joueur {j+1} ({noms_des_joueurs[j]}): {game.scores[j]} points")
 
     game.log("game_over")
-    # for j in range(nb_joueurs):
-    #     game.log(f"vies du joueur {j} : {game.bombers[j].pv}")
     game.log(f"scores {game.scores}")
+    return game.scores  # Add this line to return the scores
 
 
 if __name__ == "__main__":
