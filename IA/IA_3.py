@@ -195,13 +195,9 @@ class IA_Bomber:
                    self.get_min_distance(pos, bomb_pos) < 5):  # Augmenté à 5
                     return False
                     
-            # Éviter les autres bombers
-            for bomber in game_dict["bombers"]:
-                if bomber["num_joueur"] != self.num_joueur and bomber["pv"] > 0:
-                    if self.get_min_distance(pos, bomber["position"]) <= 2:  # Distance de sécurité pour les autres bombers
-                        return False
-                    
-            return True
+            return True  # Ignorer les autres bombers
+
+        self.is_position_safe = is_position_safe
 
         def find_safest_escape(self, pos, game_dict):
             safe_spots = []
