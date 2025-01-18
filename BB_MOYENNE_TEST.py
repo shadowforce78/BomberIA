@@ -29,4 +29,4 @@ def run_multiple_simulations(num_simulations=100):
     return avg_scores
 
 if __name__ == "__main__":
-    run_multiple_simulations(10)
+    run_multiple_simulations(100)
