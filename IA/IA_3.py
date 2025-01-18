@@ -76,17 +76,20 @@ class IA_Bomber:
         self.get_neighbors = get_neighbors
 
         def find_path(self, start, goal, map):
-            # Simple BFS implementation
             from collections import deque
             frontier = deque([(start, [start])])
             visited = {start}
-            
+            ghost_positions = [g["position"] for g in game_dict["fantômes"]]  # Récup. fantômes
+
             while frontier:
                 pos, path = frontier.popleft()
                 if pos == goal:
                     return path
                     
                 for next_pos in self.get_neighbors(self, pos, map):
+                    # Éviter les fantômes de près (distance 2)
+                    if any(self.get_min_distance(next_pos, gp) <= 2 for gp in ghost_positions):
+                        continue
                     if next_pos not in visited:
                         visited.add(next_pos)
                         new_path = list(path)
