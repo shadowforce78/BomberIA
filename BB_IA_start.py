@@ -134,7 +134,7 @@ def partie(noms_des_joueurs: list[str], scenario: str):
 
 if __name__ == "__main__":
     # Test sur training1.txt (1 joueur)
-    partie(["IA_NEURONAL"], "maps/training0.txt")
+    partie(["IA_NEURONAL"], "maps/training3.txt")
     
     # Test sur battle2.txt (2 joueur)
     # partie(["IA_3", "IA_theo"], "maps/battle2.txt")

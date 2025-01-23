@@ -32,65 +32,84 @@ class IA_Bomber:
         self.last_action = None
         self.previous_score = 0
         self.total_reward = 0  # Pour l'évaluation génétique
+        self.move_history = []  # Track last 5 positions
+        self.stuck_threshold = 3  # Number of repeated positions to consider stuck
+        self.last_position = None
 
     def get_state(self, game_dict: dict) -> Tuple:
-        """Convertit l'état du jeu en une représentation simplifiée"""
         my_bomber = game_dict["bombers"][self.num_joueur]
         pos = my_bomber["position"]
         
-        # Expanded view to 5x5 for better context
+        # Get immediate danger from bombs
+        danger_zones = set()
+        for bomb in game_dict["bombes"]:
+            bx, by = bomb["position"]
+            for dx, dy in [(0,0), (1,0), (-1,0), (0,1), (0,-1)]:
+                danger_zones.add((bx+dx, by+dy))
+        
+        # Enhanced local view with danger awareness
         local_view = []
         for dy in [-2, -1, 0, 1, 2]:
             for dx in [-2, -1, 0, 1, 2]:
-                y = pos[1] + dy
-                x = pos[0] + dx
-                if 0 <= y < len(game_dict["map"]) and 0 <= x < len(game_dict["map"][0]):
+                y, x = pos[1] + dy, pos[0] + dx
+                if (x, y) in danger_zones:
+                    cell = "D"  # Danger zone
+                elif 0 <= y < len(game_dict["map"]) and 0 <= x < len(game_dict["map"][0]):
                     cell = game_dict["map"][y][x]
                 else:
                     cell = "C"
                 local_view.append(cell)
 
+        # Calculate minimum distances
+        ghost_dist = float('inf')
+        powerup_dist = float('inf')
+        
+        for ghost in game_dict["fantômes"]:
+            dist = abs(ghost["position"][0] - pos[0]) + abs(ghost["position"][1] - pos[1])
+            ghost_dist = min(ghost_dist, dist)
+
         state = (
-            tuple(local_view),  # Vue locale
-            my_bomber["pv"],    # Points de vie
-            len([b for b in game_dict["bombes"] if b["position"] == pos]),  # Bombe sur la position
-            min([abs(f["position"][0] - pos[0]) + abs(f["position"][1] - pos[1]) 
-                for f in game_dict["fantômes"]] if game_dict["fantômes"] else [15])  # Distance au fantôme le plus proche
+            tuple(local_view),
+            my_bomber["pv"],
+            1 if (pos[0], pos[1]) in danger_zones else 0,  # Immediate danger
+            min(15, ghost_dist)  # Cap ghost distance
         )
         return state
 
     def get_reward(self, game_dict: dict) -> float:
-        """Calcule la récompense basée sur l'état du jeu"""
         current_score = game_dict["scores"][self.num_joueur]
-        score_reward = (current_score - self.previous_score) * self.weights['score']
-        self.previous_score = current_score
-
         my_bomber = game_dict["bombers"][self.num_joueur]
+        pos = my_bomber["position"]
         
-        # Adjusted reward weights
-        base_reward = 0.2  # Increased base reward
-        survival_reward = self.weights['survival'] * 1.5 if my_bomber["pv"] > 0 else -15
+        # Heavy penalty for death
+        if my_bomber["pv"] <= 0:
+            return -20
         
-        # Récompense pour l'exploration
-        local_view = self.get_state(game_dict)[0]
-        exploration_reward = 0.2 if " " in local_view else 0  # Récompense pour les cases vides accessibles
+        # Base rewards
+        reward = 0.5  # Survival bonus
         
-        # Enhanced ghost avoidance
-        ghost_distances = []
+        # Score improvement reward
+        score_diff = current_score - self.previous_score
+        reward += score_diff * self.weights['score']
+        self.previous_score = current_score
+        
+        # Ghost avoidance reward
+        min_ghost_dist = float('inf')
         for ghost in game_dict["fantômes"]:
-            dist = abs(ghost["position"][0] - my_bomber["position"][0]) + \
-                   abs(ghost["position"][1] - my_bomber["position"][1])
-            ghost_distances.append(dist)
+            dist = abs(ghost["position"][0] - pos[0]) + abs(ghost["position"][1] - pos[1])
+            min_ghost_dist = min(min_ghost_dist, dist)
         
-        # Plus de récompense quand on est loin des fantômes
-        ghost_reward = min(ghost_distances) * self.weights['ghost_distance'] * 1.2 if ghost_distances else 7
+        if min_ghost_dist != float('inf'):
+            ghost_reward = min(5, min_ghost_dist) * self.weights['ghost_distance']
+            reward += ghost_reward
         
-        # Increased powerup reward
-        powerup_reward = self.weights['powerup'] * 2.5 if "U" in local_view else 0
+        # Safety reward
+        state = self.get_state(game_dict)
+        if state[2] == 1:  # In danger zone
+            reward -= 2
         
-        total_reward = base_reward + score_reward + survival_reward + ghost_reward + powerup_reward + exploration_reward
-        self.total_reward += total_reward
-        return total_reward
+        self.total_reward += reward
+        return reward
 
     def update_q_value(self, state, action, reward, next_state):
         """Met à jour la valeur Q pour une paire état-action"""
@@ -107,10 +126,52 @@ class IA_Bomber:
                    self.learning_rate * (reward + self.discount_factor * next_max)
         self.q_table[state][action] = new_value
 
+    def is_stuck(self, current_pos):
+        """Check if the bomber is stuck in a loop"""
+        if len(self.move_history) >= self.stuck_threshold:
+            return len(set(self.move_history[-self.stuck_threshold:])) == 1
+        return False
+
+    def find_escape_route(self, game_dict: dict, pos):
+        """Find safe direction to move"""
+        directions = [(0,1), (0,-1), (1,0), (-1,0)]
+        safe_moves = []
+        
+        for dx, dy in directions:
+            new_x, new_y = pos[0] + dx, pos[1] + dy
+            if 0 <= new_y < len(game_dict["map"]) and 0 <= new_x < len(game_dict["map"][0]):
+                cell = game_dict["map"][new_y][new_x]
+                if cell == " " and not any(b["position"] == (new_x, new_y) for b in game_dict["bombes"]):
+                    safe_moves.append(("D" if dx > 0 else "G" if dx < 0 else "B" if dy > 0 else "H"))
+        
+        return safe_moves
+
     def action(self, game_dict: dict) -> str:
         current_state = self.get_state(game_dict)
+        my_bomber = game_dict["bombers"][self.num_joueur]
+        current_pos = my_bomber["position"]
         
-        # Apprentissage de l'action précédente
+        # Update position history
+        if current_pos != self.last_position:
+            self.move_history.append(current_pos)
+            if len(self.move_history) > 5:
+                self.move_history.pop(0)
+        self.last_position = current_pos
+
+        # Check for immediate danger
+        if current_state[2] == 1:  # In danger zone
+            escape_routes = self.find_escape_route(game_dict, current_pos)
+            if escape_routes:
+                return random.choice(escape_routes)
+
+        # Check if stuck
+        if self.is_stuck(current_pos):
+            safe_moves = self.find_escape_route(game_dict, current_pos)
+            if safe_moves:
+                return random.choice(safe_moves)
+            return "X"  # Place bomb to clear path if stuck
+
+        # Normal Q-learning behavior
         if self.last_state is not None:
             reward = self.get_reward(game_dict)
             self.update_q_value(self.last_state, self.last_action, reward, current_state)
