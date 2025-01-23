@@ -37,18 +37,22 @@ def train_genetic_ai(nb_generations: int = 100, population_size: int = 20):
                 # Convertir scores en array numpy si ce n'est pas déjà le cas
                 scores_array = np.array(scores)
                 
-                # Utiliser argmax au lieu de index pour trouver le meilleur score
+                # Trouver le meilleur score et son index
                 current_best_idx = np.argmax(scores_array)
-                current_best = scores_array[current_best_idx]
+                current_best = float(scores_array[current_best_idx])  # Convertir en float Python standard
                 
-                genetic_manager.evolve(scores_array.tolist())  # Convertir en liste si nécessaire
-                
+                # Stocker les gènes du meilleur individu avant l'évolution
                 if current_best > best_score:
                     best_score = current_best
+                    best_genes = genetic_manager.population[current_best_idx].copy()
+                    genetic_manager.best_genes = best_genes
                     genetic_manager.save_best_genes("best_genes.json")
                 
+                # Évoluer avec la liste Python standard
+                genetic_manager.evolve(scores)  # Pas besoin de conversion, utiliser la liste originale
+                
                 print(f"Meilleur score de la génération: {current_best}")
-                print(f"Score moyen de la génération: {np.mean(scores_array)}")
+                print(f"Score moyen de la génération: {float(np.mean(scores_array))}")
                 print(f"Meilleur score global: {best_score}")
                 
             except Exception as e:
