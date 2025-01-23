@@ -279,6 +279,17 @@ class Game:
 
         # mise à jour position précédente dans tous les cas
         f.case_précédente = pos
+        
+        
+    def blesser_fantôme(self, f: Fantôme):
+        """blessure sur un fantôme
+
+        Args:
+            f (Fantôme): le fantôme blessé
+        """
+        self.log(f"blessure_fantôme {f.position}")
+        self.fantômes_éliminés = True
+        self.log(f"f_élimination {f.position}")
 
     def attaque_fantôme(self, f: Fantôme):
         """attaque d'un fantôme sur les cases voisines"""
