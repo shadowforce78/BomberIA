@@ -122,7 +122,7 @@ class GeneticManager:
         """Sauvegarde les meilleurs gènes dans un fichier"""
         if self.best_genes:
             with open(filename, 'w') as f:
-                json.dump(self.best_genes, f)
+                json.dump(self.best_genes, f, indent=4)
     
     def load_best_genes(self, filename: str = "best_genes.json") -> Dict:
         """Charge les meilleurs gènes depuis un fichier"""
