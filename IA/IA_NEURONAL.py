@@ -38,25 +38,24 @@ class IA_Bomber:
         my_bomber = game_dict["bombers"][self.num_joueur]
         pos = my_bomber["position"]
         
-        # Créer une vue locale 3x3 autour du bomber
+        # Expanded view to 5x5 for better context
         local_view = []
-        for dy in [-1, 0, 1]:
-            for dx in [-1, 0, 1]:
+        for dy in [-2, -1, 0, 1, 2]:
+            for dx in [-2, -1, 0, 1, 2]:
                 y = pos[1] + dy
                 x = pos[0] + dx
                 if 0 <= y < len(game_dict["map"]) and 0 <= x < len(game_dict["map"][0]):
                     cell = game_dict["map"][y][x]
                 else:
-                    cell = "C"  # Traiter les bords comme des murs
+                    cell = "C"
                 local_view.append(cell)
 
-        # Inclure des informations importantes
         state = (
             tuple(local_view),  # Vue locale
             my_bomber["pv"],    # Points de vie
             len([b for b in game_dict["bombes"] if b["position"] == pos]),  # Bombe sur la position
             min([abs(f["position"][0] - pos[0]) + abs(f["position"][1] - pos[1]) 
-                for f in game_dict["fantômes"]] if game_dict["fantômes"] else [10])  # Distance au fantôme le plus proche
+                for f in game_dict["fantômes"]] if game_dict["fantômes"] else [15])  # Distance au fantôme le plus proche
         )
         return state
 
@@ -68,29 +67,26 @@ class IA_Bomber:
 
         my_bomber = game_dict["bombers"][self.num_joueur]
         
-        # Récompense de base pour être en vie
-        base_reward = 0.1
-        
-        # Récompense de survie
-        survival_reward = self.weights['survival'] if my_bomber["pv"] > 0 else -10
+        # Adjusted reward weights
+        base_reward = 0.2  # Increased base reward
+        survival_reward = self.weights['survival'] * 1.5 if my_bomber["pv"] > 0 else -15
         
         # Récompense pour l'exploration
         local_view = self.get_state(game_dict)[0]
         exploration_reward = 0.2 if " " in local_view else 0  # Récompense pour les cases vides accessibles
         
-        # Récompense distance aux fantômes (modifiée)
+        # Enhanced ghost avoidance
         ghost_distances = []
         for ghost in game_dict["fantômes"]:
-            dx = abs(ghost["position"][0] - my_bomber["position"][0])
-            dy = abs(ghost["position"][1] - my_bomber["position"][1])
-            dist = dx + dy
+            dist = abs(ghost["position"][0] - my_bomber["position"][0]) + \
+                   abs(ghost["position"][1] - my_bomber["position"][1])
             ghost_distances.append(dist)
         
         # Plus de récompense quand on est loin des fantômes
-        ghost_reward = min(ghost_distances) * self.weights['ghost_distance'] if ghost_distances else 5
+        ghost_reward = min(ghost_distances) * self.weights['ghost_distance'] * 1.2 if ghost_distances else 7
         
-        # Récompense power-up (augmentée)
-        powerup_reward = self.weights['powerup'] * 2 if "U" in local_view else 0
+        # Increased powerup reward
+        powerup_reward = self.weights['powerup'] * 2.5 if "U" in local_view else 0
         
         total_reward = base_reward + score_reward + survival_reward + ghost_reward + powerup_reward + exploration_reward
         self.total_reward += total_reward

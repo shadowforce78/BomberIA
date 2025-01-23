@@ -67,4 +67,4 @@ def train_genetic_ai(nb_generations: int = 100, population_size: int = 20):
         genetic_manager.save_best_genes("best_genes_interrupted.json")
 
 if __name__ == "__main__":
-    train_genetic_ai(nb_generations=100, population_size=20)  # Augmenté pour plus d'exploration
+    train_genetic_ai(nb_generations=50, population_size=10)  # Augmenté pour plus d'exploration
