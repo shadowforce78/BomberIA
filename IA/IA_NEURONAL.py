@@ -14,27 +14,18 @@ class IA_Bomber:
         self.num_joueur = num_joueur
         self.actions = ["H", "B", "G", "D", "X", "N"]
         
-        # Charger les gènes depuis le gestionnaire génétique
+        # Charger les gènes depuis le fichier
         genetic_manager = GeneticManager()
-        genes = genetic_manager.load_best_genes()
+        genes = genetic_manager.load_best_genes("best_genes.json")  # Spécifier le fichier explicitement
         
         if genes is None:
-            # Utiliser des valeurs par défaut si pas de gènes sauvegardés
-            self.learning_rate = 0.1
-            self.discount_factor = 0.9
-            self.epsilon = 0.1
-            self.weights = {
-                'score': 1.0,
-                'survival': 1.0,
-                'ghost_distance': 1.0,
-                'powerup': 1.0
-            }
-        else:
-            # Utiliser les gènes chargés
-            self.learning_rate = genes['learning_rate']
-            self.discount_factor = genes['discount_factor']
-            self.epsilon = genes['epsilon']
-            self.weights = genes['weights']
+            raise Exception("Fichier best_genes.json non trouvé! L'IA doit d'abord être entraînée.")
+        
+        # Utiliser les paramètres optimisés
+        self.learning_rate = genes['learning_rate']
+        self.discount_factor = genes['discount_factor']
+        self.epsilon = 0.05  # Réduire l'exploration en production
+        self.weights = genes['weights']
         
         self.q_table = {}
         self.last_state = None

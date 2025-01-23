@@ -20,13 +20,16 @@ def train_genetic_ai(nb_generations: int = 100, population_size: int = 20):
                     genetic_manager.save_best_genes("temp_genes.json")
                     
                     total_score = 0
-                    nb_parties = 3
-                    for _ in range(nb_parties):
+                    nb_parties = 10  # Augmenté pour une meilleure évaluation
+                    for game_num in range(nb_parties):
                         game_scores = partie(["IA_NEURONAL"], "maps/training0.txt")
-                        total_score += game_scores[0] if game_scores else 0
+                        score = game_scores[0] if game_scores else 0
+                        # Bonus pour encourager la survie et l'exploration
+                        survival_bonus = 2.0  # Bonus de base pour avoir joué
+                        total_score += score + survival_bonus
                     
                     avg_score = total_score / nb_parties
-                    scores.append(max(0.1, avg_score))
+                    scores.append(max(0.5, avg_score))  # Score minimal augmenté
                     
                 except Exception as e:
                     print(f"Erreur pendant l'évaluation: {e}")
@@ -64,4 +67,4 @@ def train_genetic_ai(nb_generations: int = 100, population_size: int = 20):
         genetic_manager.save_best_genes("best_genes_interrupted.json")
 
 if __name__ == "__main__":
-    train_genetic_ai(nb_generations=50, population_size=10)
+    train_genetic_ai(nb_generations=100, population_size=20)  # Augmenté pour plus d'exploration

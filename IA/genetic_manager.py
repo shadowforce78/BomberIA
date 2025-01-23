@@ -18,14 +18,14 @@ class GeneticManager:
         self.population = []
         for _ in range(self.population_size):
             genes = {
-                'learning_rate': random.uniform(0.01, 0.5),
-                'discount_factor': random.uniform(0.5, 0.99),
-                'epsilon': random.uniform(0.05, 0.3),
+                'learning_rate': random.uniform(0.15, 0.25),  # Plage optimisée
+                'discount_factor': random.uniform(0.85, 0.95),  # Valeurs plus élevées
+                'epsilon': random.uniform(0.15, 0.25),  # Plus d'exploration
                 'weights': {
-                    'score': random.uniform(0.5, 2.0),
-                    'survival': random.uniform(0.5, 2.0),
-                    'ghost_distance': random.uniform(0.5, 2.0),
-                    'powerup': random.uniform(0.5, 2.0)
+                    'score': random.uniform(2.0, 4.0),      # Augmenté
+                    'survival': random.uniform(2.0, 4.0),   # Augmenté
+                    'ghost_distance': random.uniform(1.5, 3.0),
+                    'powerup': random.uniform(1.5, 3.0)
                 }
             }
             self.population.append(genes)
@@ -69,22 +69,23 @@ class GeneticManager:
                     child[key] = parent2[key]
         return child
     
-    def mutate(self, genes: Dict, mutation_rate: float = 0.1) -> Dict:
+    def mutate(self, genes: Dict, mutation_rate: float = 0.2) -> Dict:  # Taux augmenté
         """Applique une mutation aléatoire aux gènes"""
         mutated = genes.copy()
         for key in mutated.keys():
             if isinstance(mutated[key], dict):
                 for subkey in mutated[key].keys():
                     if random.random() < mutation_rate:
-                        mutated[key][subkey] *= random.uniform(0.8, 1.2)
+                        # Mutation plus forte
+                        mutated[key][subkey] *= random.uniform(0.6, 1.6)
             else:
                 if random.random() < mutation_rate:
                     if key == 'learning_rate':
-                        mutated[key] = random.uniform(0.01, 0.5)
+                        mutated[key] = random.uniform(0.15, 0.25)
                     elif key == 'discount_factor':
-                        mutated[key] = random.uniform(0.5, 0.99)
+                        mutated[key] = random.uniform(0.85, 0.95)
                     elif key == 'epsilon':
-                        mutated[key] = random.uniform(0.05, 0.3)
+                        mutated[key] = random.uniform(0.15, 0.25)
         return mutated
     
     def evolve(self, scores: List[float]):
@@ -93,16 +94,16 @@ class GeneticManager:
         if not scores:
             return  # Ne rien faire si pas de scores
             
-        # Normaliser les scores pour qu'ils soient positifs
-        scores = np.array(scores)
-        scores = scores - np.min(scores) + 1  # Assure que tous les scores sont > 0
+        # Convertir en array numpy et normaliser les scores
+        scores_array = np.array(scores)
+        scores_array = scores_array - np.min(scores_array) + 1  # Assure que tous les scores sont > 0
         
-        # Sauvegarder le meilleur individu
-        best_index = scores.index(max(scores))
+        # Sauvegarder le meilleur individu en utilisant argmax
+        best_index = np.argmax(scores_array)
         self.best_genes = self.population[best_index].copy()
         
         # Sélectionner les parents
-        parents = self.select_parents(scores)
+        parents = self.select_parents(scores_array)
         
         # Créer la nouvelle population
         new_population = [self.best_genes]  # Élitisme
